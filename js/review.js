@@ -76,10 +76,14 @@ const Review = {
     const weakStr  = stats.weak > 0
       ? `&nbsp;&middot;&nbsp;<span class="weak-inline">${stats.weak} weak</span>`
       : '';
+    const isRedo = !!session.isRedo;
     return `
       <div class="test-card">
         <div class="test-card-info">
-          <h3>${this._esc(session.testTitle)}</h3>
+          <div class="test-card-title-row">
+            ${isRedo ? '<span class="hbadge hbadge-redo">Redo</span>' : ''}
+            <h3>${this._esc(session.testTitle)}</h3>
+          </div>
           <span class="meta">
             ${this._modeLabel(session.mode)} &middot;
             ${this._fmtDate(session.completedAt)} &middot;
@@ -133,6 +137,8 @@ const Review = {
         <button class="btn btn-ghost" onclick="Review.backToList()">&#8592; Sessions</button>
         <h1 class="review-page-title" title="${this._esc(session.testTitle)}">${this._esc(session.testTitle)}</h1>
         <div class="header-actions">
+          <button class="btn btn-ghost" onclick="Review.exportSession('${session.id}')"
+                  title="Export this session as JSON">Export</button>
           <button class="btn btn-secondary" id="global-model-btn"
                   onclick="Review.toggleAllModelAnswers()">
             ${this._showModelAnswers ? 'Hide model answers' : 'Show model answers'}
@@ -148,6 +154,8 @@ const Review = {
         </div>
       </div>
 
+      ${session.isRedo ? this._redoBannerHTML(session) : ''}
+
       <div id="review-summary" class="review-summary">
         ${this._summaryHTML(session, stats)}
       </div>
@@ -160,6 +168,30 @@ const Review = {
     `;
 
     this._injectCards();
+  },
+
+  _redoBannerHTML(session) {
+    const allSessions = Storage.getSessions();
+    const source      = session.redoOf ? allSessions[session.redoOf] : null;
+    const sourceLink  = source
+      ? `<button class="btn btn-sm btn-ghost redo-source-btn"
+                 onclick="Review.openSource('${session.redoOf}')">View original review</button>`
+      : '';
+    const sourceLabel = source
+      ? `from <strong>${this._esc(source.testTitle)}</strong> (${this._fmtDate(source.completedAt || source.startedAt)})`
+      : session.redoOf
+        ? `(original session was deleted)`
+        : '';
+
+    return `
+      <div class="redo-session-banner">
+        <span class="redo-banner-icon">&#8635;</span>
+        <span class="redo-banner-text">
+          Weak-question redo session ${sourceLabel}
+        </span>
+        ${sourceLink}
+      </div>
+    `;
   },
 
   // ── Summary block ─────────────────────────────────────────
@@ -783,6 +815,33 @@ const Review = {
     return r;
   },
 
+  // ── Session export ───────────────────────────────────────
+
+  exportSession(sessionId) {
+    const session = Storage.getSessions()[sessionId];
+    if (!session) return;
+    const payload = {
+      schemaVersion: 1,
+      type:          'exam-practice-session',
+      exportedAt:    Date.now(),
+      session,
+    };
+    const safeTitle = (session.testTitle || 'session').replace(/[^a-z0-9]/gi, '_').slice(0, 40);
+    const dateStr   = new Date().toISOString().slice(0, 10);
+    this._downloadJSON(payload, `session_${safeTitle}_${dateStr}.json`);
+  },
+
+  openSource(sessionId) {
+    this._flushReasonText();
+    const source = Storage.getSessions()[sessionId];
+    if (!source) {
+      this._toast('Original session no longer exists.', 'error');
+      return;
+    }
+    this.openSession(sessionId);
+    this.render();
+  },
+
   // ── Utilities ─────────────────────────────────────────────
 
   _modeLabel(mode) {
@@ -813,5 +872,15 @@ const Review = {
   _fmtDate(ts) {
     if (!ts) return '';
     return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  },
+
+  _downloadJSON(payload, filename) {
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
   },
 };

@@ -553,11 +553,10 @@ const Builder = {
   // ── Import / Export ──────────────────────────────────────
 
   exportTest(id) {
-    // FIX: when called from the editor, use the live in-memory state so that
+    // When called from the editor, use the live in-memory state so that
     // unsaved structural changes (reorders, new questions) are included.
     let test;
     if (this.currentTest && this.currentTest.id === id) {
-      // Merge current DOM title/desc into a copy of the in-memory test
       const domTitle = document.getElementById('test-title')?.value?.trim();
       const domDesc  = document.getElementById('test-desc')?.value?.trim();
       test = {
@@ -572,14 +571,18 @@ const Builder = {
 
     const questions = Storage.getQuestions();
     const testQs    = test.questionIds.map(qid => questions[qid]).filter(Boolean);
-    const payload   = { test, questions: testQs, exportedAt: Date.now() };
-    const blob      = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url       = URL.createObjectURL(blob);
-    const a         = document.createElement('a');
-    a.href          = url;
-    a.download      = (test.title || 'test').replace(/[^a-z0-9]/gi, '_') + '.json';
-    a.click();
-    URL.revokeObjectURL(url);
+
+    const payload = {
+      schemaVersion: 1,
+      type:          'exam-practice-test',
+      exportedAt:    Date.now(),
+      test,
+      questions:     testQs,
+    };
+
+    const safeTitle = (test.title || 'test').replace(/[^a-z0-9]/gi, '_').slice(0, 40);
+    const dateStr   = new Date().toISOString().slice(0, 10);
+    this._downloadJSON(payload, `test_${safeTitle}_${dateStr}.json`);
   },
 
   importTest(event) {
@@ -588,29 +591,145 @@ const Builder = {
     const reader = new FileReader();
     reader.onload = e => {
       try {
-        const data = JSON.parse(e.target.result);
-        if (!data.test || !Array.isArray(data.questions)) {
-          throw new Error('File is missing "test" or "questions" fields.');
-        }
+        const raw = JSON.parse(e.target.result);
+        const { test, questions, skipped } = this._parseImportData(raw);
 
+        // Conflict check
         const existing = Storage.getTests();
-        if (existing[data.test.id]) {
-          const overwrite = confirm(
-            `A test called "${existing[data.test.id].title}" already exists.\nOverwrite it?`
-          );
-          if (!overwrite) { event.target.value = ''; return; }
+        if (existing[test.id]) {
+          const choice = this._importConflictChoice(existing[test.id].title, test.title);
+          if (choice === 'cancel') { event.target.value = ''; return; }
+          if (choice === 'copy') {
+            const remapped = this._remapIds(test, questions);
+            test.id           = remapped.test.id;
+            test.title        = remapped.test.title;
+            test.questionIds  = remapped.test.questionIds;
+            remapped.questions.forEach((q, i) => { questions[i] = q; });
+          }
+          // 'overwrite' → fall through with original IDs
         }
 
-        data.questions.forEach(q => Storage.saveQuestion(q));
-        Storage.saveTest(data.test);
-        this._toast(`Imported "${data.test.title}" (${data.questions.length} questions).`);
+        questions.forEach(q => Storage.saveQuestion(q));
+        Storage.saveTest(test);
+
+        const note = skipped > 0
+          ? ` (${skipped} invalid question${skipped > 1 ? 's' : ''} skipped)`
+          : '';
+        this._toast(`Imported "${test.title}" — ${questions.length} question${questions.length !== 1 ? 's' : ''}${note}.`);
         this.render();
       } catch (err) {
-        this._toast('Import failed: ' + err.message, 'error');
+        this._toast(`Import failed: ${err.message}`, 'error');
       }
     };
     reader.readAsText(file);
     event.target.value = '';
+  },
+
+  /** Parse and sanitize raw import JSON. Throws on fatal errors. */
+  _parseImportData(raw) {
+    if (!raw || typeof raw !== 'object') throw new Error('File is not a valid JSON object.');
+    if (!raw.test || typeof raw.test !== 'object') throw new Error('Missing "test" field.');
+    if (!Array.isArray(raw.questions))             throw new Error('Missing "questions" array.');
+
+    const test = {
+      id:          raw.test.id          || generateId(),
+      title:       (raw.test.title      || '').trim(),
+      description: raw.test.description || '',
+      questionIds: Array.isArray(raw.test.questionIds) ? raw.test.questionIds : [],
+      createdAt:   raw.test.createdAt   || Date.now(),
+      updatedAt:   Date.now(),
+    };
+    if (!test.title) throw new Error('Imported test has no title.');
+
+    const questions = [];
+    let skipped = 0;
+    raw.questions.forEach(raw_q => {
+      const q = this._sanitizeImportQuestion(raw_q);
+      if (q) questions.push(q);
+      else   skipped++;
+    });
+
+    // Only keep questionIds that resolved to a valid question
+    const validIds = new Set(questions.map(q => q.id));
+    test.questionIds = test.questionIds.filter(id => validIds.has(id));
+    // Add any valid questions not already in the list (import order fallback)
+    questions.forEach(q => {
+      if (!test.questionIds.includes(q.id)) test.questionIds.push(q.id);
+    });
+
+    return { test, questions, skipped };
+  },
+
+  _sanitizeImportQuestion(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    if (!raw.id) return null;
+    const prompt = (raw.prompt || '').trim();
+    if (!prompt) return null; // question must have a prompt
+    return {
+      id:           raw.id,
+      type:         ['short', 'long', 'mcq'].includes(raw.type) ? raw.type : 'short',
+      prompt,
+      instructions: raw.instructions || '',
+      weekTags:     Array.isArray(raw.weekTags) ? raw.weekTags : [],
+      subtopic:     raw.subtopic     || '',
+      modelAnswer:  raw.modelAnswer  || '',
+      mcqOptions:   Array.isArray(raw.mcqOptions) ? raw.mcqOptions.map(o => ({
+        id:        o.id        || generateId(),
+        text:      o.text      || '',
+        isCorrect: !!o.isCorrect,
+      })) : [],
+      createdAt:    raw.createdAt || Date.now(),
+      updatedAt:    Date.now(),
+    };
+  },
+
+  /** Show a three-way conflict prompt. Returns 'overwrite' | 'copy' | 'cancel'. */
+  _importConflictChoice(existingTitle, incomingTitle) {
+    const isSame = existingTitle === incomingTitle;
+    const msg = isSame
+      ? `A test called "${existingTitle}" already exists.\n\nOverwrite it with the imported version, or save as a new copy?`
+      : `A test with ID conflict exists ("${existingTitle}").\n\nOverwrite it with the imported version ("${incomingTitle}"), or save as a new copy?`;
+    const result = window.confirm(msg + '\n\nOK = Overwrite   Cancel = Save as copy');
+    if (result) return 'overwrite';
+    // Second confirm to catch accidental Cancel
+    const copyResult = window.confirm('Save as a new copy instead?\n\nOK = Save as copy   Cancel = Abort import');
+    return copyResult ? 'copy' : 'cancel';
+  },
+
+  /** Remap all IDs to fresh values — used for "import as copy". */
+  _remapIds(test, questions) {
+    const idMap = {};
+    const freshQs = questions.map(q => {
+      const newId = generateId();
+      idMap[q.id] = newId;
+      return {
+        ...q,
+        id:         newId,
+        mcqOptions: (q.mcqOptions || []).map(o => ({ ...o, id: generateId() })),
+        createdAt:  Date.now(),
+        updatedAt:  Date.now(),
+      };
+    });
+    const freshTest = {
+      ...test,
+      id:          generateId(),
+      title:       test.title + ' (copy)',
+      questionIds: test.questionIds.map(old => idMap[old]).filter(Boolean),
+      createdAt:   Date.now(),
+      updatedAt:   Date.now(),
+    };
+    return { test: freshTest, questions: freshQs };
+  },
+
+  /** Trigger a browser download of a JSON object. */
+  _downloadJSON(payload, filename) {
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
   },
 
   // ── Utilities ────────────────────────────────────────────

@@ -30,6 +30,9 @@ const History = {
       <div class="page-header">
         <h1>History</h1>
         <span class="page-subtitle">${allCount} session${allCount !== 1 ? 's' : ''} total</span>
+        <div class="header-actions">
+          ${allCount > 0 ? '<button class="btn btn-secondary btn-sm" onclick="History.exportAllSessions()" title="Download all sessions as JSON">Export All</button>' : ''}
+        </div>
       </div>
 
       <div class="history-controls">
@@ -178,6 +181,9 @@ const History = {
       ? `<button class="btn btn-sm btn-primary"
                  onclick="History.resumeSession('${session.id}')">Resume</button>`
       : '';
+    const exportBtn = `<button class="btn btn-sm btn-secondary"
+                               onclick="History.exportSession('${session.id}')"
+                               title="Export this session as JSON">Export</button>`;
     const deleteBtn = `<button class="btn btn-sm btn-danger"
                                onclick="History.deleteSession('${session.id}')">Delete</button>`;
 
@@ -214,7 +220,7 @@ const History = {
         ${lineageHTML}
 
         <div class="history-card-actions">
-          ${reviewBtn}${resumeBtn}${deleteBtn}
+          ${reviewBtn}${resumeBtn}${exportBtn}${deleteBtn}
         </div>
       </div>
     `;
@@ -316,6 +322,46 @@ const History = {
     if (ctlEl) ctlEl.innerHTML = this._sortBarHTML() + this._filterBarHTML();
     const listEl = document.getElementById('history-list');
     if (listEl) listEl.innerHTML = this._listHTML(sessions);
+  },
+
+  // ── Export ───────────────────────────────────────────────
+
+  exportSession(sessionId) {
+    const session = Storage.getSessions()[sessionId];
+    if (!session) return;
+    const payload = {
+      schemaVersion: 1,
+      type:          'exam-practice-session',
+      exportedAt:    Date.now(),
+      session,
+    };
+    const safeTitle = (session.testTitle || 'session').replace(/[^a-z0-9]/gi, '_').slice(0, 40);
+    const dateStr   = new Date().toISOString().slice(0, 10);
+    this._downloadJSON(payload, `session_${safeTitle}_${dateStr}.json`);
+  },
+
+  exportAllSessions() {
+    const sessions = Object.values(Storage.getSessions());
+    if (sessions.length === 0) return;
+    const payload = {
+      schemaVersion: 1,
+      type:          'exam-practice-sessions-export',
+      exportedAt:    Date.now(),
+      count:         sessions.length,
+      sessions,
+    };
+    const dateStr = new Date().toISOString().slice(0, 10);
+    this._downloadJSON(payload, `all_sessions_${dateStr}.json`);
+  },
+
+  _downloadJSON(payload, filename) {
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
   },
 
   // ── Stat helpers ──────────────────────────────────────────

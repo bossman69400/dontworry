@@ -131,7 +131,12 @@ const Runner = {
       return !r || !r.answer || (typeof r.answer === 'string' && !r.answer.trim());
     });
     this.currentIdx = firstUnanswered >= 0 ? firstUnanswered : 0;
-    this.render();
+    // Navigate to runner section (needed when called from History)
+    if (window.location.hash.replace('#', '') !== 'runner') {
+      Router.navigate('runner');
+    } else {
+      this.render();
+    }
   },
 
   discardSession(sessionId) {
