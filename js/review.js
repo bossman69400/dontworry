@@ -96,6 +96,7 @@ const Review = {
   },
 
   selectSession(id) {
+    this._flushReasonText();   // save any pending text before switching
     const session = Storage.getSessions()[id];
     if (!session) return;
     this.selectedSession = session;
@@ -469,6 +470,7 @@ const Review = {
                             rows="2"
                             placeholder="Describe what went wrong&#8230;"
                             oninput="Review.onReasonText('${q.id}', this.value)"
+                    onblur="Review.onReasonTextBlur('${q.id}', this.value)"
                   >${this._esc(r.errorReasonText || '')}</textarea>
                 </div>
               </div>
@@ -578,7 +580,20 @@ const Review = {
   onReasonText(questionId, value) {
     this._getResponse(questionId).errorReasonText = value;
     clearTimeout(this._reasonTimer);
-    this._reasonTimer = setTimeout(() => Storage.saveSession(this.selectedSession), 500);
+    showSavePending();
+    this._reasonTimer = setTimeout(() => {
+      Storage.saveSession(this.selectedSession);
+      showSaved();
+    }, 500);
+  },
+
+  onReasonTextBlur(questionId, value) {
+    // Flush immediately on blur — don't wait for the debounce timer
+    clearTimeout(this._reasonTimer);
+    const r = this._getResponse(questionId);
+    r.errorReasonText = value;
+    Storage.saveSession(this.selectedSession);
+    showSaved();
   },
 
   // ── Model answer toggle ───────────────────────────────────
@@ -663,6 +678,7 @@ const Review = {
     if (ta && ta.dataset.qid && this.selectedSession) {
       this._getResponse(ta.dataset.qid).errorReasonText = ta.value;
       Storage.saveSession(this.selectedSession);
+      showSaved();
     }
   },
 

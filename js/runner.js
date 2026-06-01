@@ -378,7 +378,11 @@ const Runner = {
     this._ensureResponse(questionId).answer = value;
     // Debounce the storage write so we don't thrash on every keystroke
     clearTimeout(this._saveTimer);
-    this._saveTimer = setTimeout(() => Storage.saveSession(this.session), 500);
+    showSavePending();
+    this._saveTimer = setTimeout(() => {
+      Storage.saveSession(this.session);
+      showSaved();
+    }, 500);
   },
 
   setMcqAnswer(questionId, optionId) {

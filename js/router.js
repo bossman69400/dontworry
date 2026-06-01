@@ -15,6 +15,18 @@ const Router = {
   },
 
   _handleRoute() {
+    // Flush any pending debounced saves before the section switches.
+    // Wrapped in try/catch so a broken module can't block navigation.
+    try {
+      if (typeof Review !== 'undefined' && Review._flushReasonText) {
+        Review._flushReasonText();
+      }
+      if (typeof Runner !== 'undefined' && Runner.session &&
+          !Runner.session.completedAt && Runner._flushAndSave) {
+        Runner._flushAndSave();
+      }
+    } catch (e) {}
+
     const hash = window.location.hash.replace('#', '') || this._defaultSection;
 
     // Update nav active state
