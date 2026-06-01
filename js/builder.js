@@ -537,6 +537,12 @@ const Builder = {
         if (domTitle || this.currentTest.questionIds.length > 0) {
           if (!confirm('This test has not been saved yet.\nGo back and discard it?')) return;
         }
+        // Clean up any questions saved during this edit session but orphaned
+        // because the test was never saved. No saved test references them.
+        const savedTests = Object.values(Storage.getTests());
+        this.currentTest.questionIds.forEach(qid => {
+          if (!savedTests.some(t => t.questionIds.includes(qid))) Storage.deleteQuestion(qid);
+        });
       } else {
         // Existing saved test — warn if title or description differs from storage
         const domTitle = document.getElementById('test-title')?.value ?? stored.title;
@@ -689,11 +695,10 @@ const Builder = {
     const msg = isSame
       ? `A test called "${existingTitle}" already exists.\n\nOverwrite it with the imported version, or save as a new copy?`
       : `A test with ID conflict exists ("${existingTitle}").\n\nOverwrite it with the imported version ("${incomingTitle}"), or save as a new copy?`;
-    const result = window.confirm(msg + '\n\nOK = Overwrite   Cancel = Save as copy');
-    if (result) return 'overwrite';
-    // Second confirm to catch accidental Cancel
-    const copyResult = window.confirm('Save as a new copy instead?\n\nOK = Save as copy   Cancel = Abort import');
-    return copyResult ? 'copy' : 'cancel';
+    const overwrite = window.confirm(msg + '\n\nOK = Overwrite existing   Cancel = Import as new copy');
+    if (overwrite) return 'overwrite';
+    const makeCopy = window.confirm('Import as a new copy?\n\nOK = Yes, save as copy   Cancel = Abort import');
+    return makeCopy ? 'copy' : 'cancel';
   },
 
   /** Remap all IDs to fresh values — used for "import as copy". */

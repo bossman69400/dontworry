@@ -589,6 +589,11 @@ const Review = {
 
     this._refreshWeakState(questionId, r);
     this._refreshSummary();
+    // Re-apply filters if grade or weak filters are active — a grade change
+    // may make a card no longer match the current filter view.
+    if (this._filters.weakOnly || this._filters.grade !== 'all') {
+      this._applyFilters();
+    }
   },
 
   toggleRetryLater(questionId) {
@@ -599,6 +604,11 @@ const Review = {
     if (btn) btn.classList.toggle('retry-active', r.retryLater);
     this._refreshWeakState(questionId, r);
     this._refreshSummary();
+    // Re-apply filters if weak filter is active — a retry-later change
+    // may make a card match or stop matching the "Weak Only" filter.
+    if (this._filters.weakOnly) {
+      this._applyFilters();
+    }
   },
 
   setErrorReason(questionId, reason) {
@@ -818,6 +828,8 @@ const Review = {
   // ── Session export ───────────────────────────────────────
 
   exportSession(sessionId) {
+    // Flush any pending debounced text before reading the session from storage
+    this._flushReasonText();
     const session = Storage.getSessions()[sessionId];
     if (!session) return;
     const payload = {
