@@ -77,16 +77,24 @@ const Builder = {
   // ── Test Editor View ─────────────────────────────────────
 
   _renderEditor(el) {
-    const questions  = Storage.getQuestions();
-    const testQs     = this.currentTest.questionIds.map(id => questions[id]).filter(Boolean);
-    const isSaved    = !!Storage.getTests()[this.currentTest.id];
+    // FIX: preserve any title/desc the user has typed before wiping innerHTML.
+    // Without this, inputs reset whenever _renderEditor is called (on every
+    // question save, move, delete, duplicate).
+    const titleEl = document.getElementById('test-title');
+    const descEl  = document.getElementById('test-desc');
+    if (titleEl) this.currentTest.title       = titleEl.value;
+    if (descEl)  this.currentTest.description = descEl.value;
+
+    const questions = Storage.getQuestions();
+    const testQs    = this.currentTest.questionIds.map(id => questions[id]).filter(Boolean);
+    const isSaved   = !!Storage.getTests()[this.currentTest.id];
 
     el.innerHTML = `
       <div class="page-header">
         <button class="btn btn-ghost" onclick="Builder.backToList()">&#8592; Back</button>
         <h1>${isSaved ? 'Edit Test' : 'New Test'}</h1>
         <div class="header-actions">
-          <button class="btn btn-primary"    onclick="Builder.saveTest()">Save Test</button>
+          <button class="btn btn-primary" onclick="Builder.saveTest()">Save Test</button>
           ${isSaved
             ? `<button class="btn btn-secondary" onclick="Builder.exportTest('${this.currentTest.id}')">Export JSON</button>`
             : ''}
@@ -126,7 +134,7 @@ const Builder = {
   },
 
   _renderQuestionRow(q, idx, total) {
-    const typeLabel = { short: 'Short', long: 'Long', mcq: 'MCQ' }[q.type] || q.type;
+    const typeLabel  = { short: 'Short', long: 'Long', mcq: 'MCQ' }[q.type] || q.type;
     const weekBadges = q.weekTags
       .map(w => `<span class="week-tag week-tag-${w.replace(/\D/g, '')}">${w}</span>`)
       .join('');
@@ -152,12 +160,13 @@ const Builder = {
             ${weekBadges}
             ${q.subtopic ? `<span class="subtopic-badge">${this._esc(q.subtopic)}</span>` : ''}
           </div>
-          <p class="question-prompt-preview">${this._esc(preview)}</p>
+          <p class="question-prompt-preview"
+             title="${this._esc(q.prompt)}">${this._esc(preview)}</p>
         </div>
 
         <div class="question-row-actions">
           <button class="btn btn-sm btn-secondary" onclick="Builder.openQuestionForm('${q.id}')">Edit</button>
-          <button class="btn btn-sm btn-secondary" onclick="Builder.duplicateQuestion('${q.id}')">Dupe</button>
+          <button class="btn btn-sm btn-secondary" onclick="Builder.duplicateQuestion('${q.id}')">Duplicate</button>
           <button class="btn btn-sm btn-danger"    onclick="Builder.removeQuestion('${q.id}')">Delete</button>
         </div>
       </div>
@@ -201,11 +210,11 @@ const Builder = {
           <div class="form-group">
             <label>Question Type *</label>
             <div class="type-selector">
-              <button class="type-btn ${q.type === 'short' ? 'active' : ''}"
+              <button type="button" class="type-btn ${q.type === 'short' ? 'active' : ''}"
                       onclick="Builder._changeType('short')">Short Answer</button>
-              <button class="type-btn ${q.type === 'long' ? 'active' : ''}"
+              <button type="button" class="type-btn ${q.type === 'long' ? 'active' : ''}"
                       onclick="Builder._changeType('long')">Long Answer</button>
-              <button class="type-btn ${q.type === 'mcq' ? 'active' : ''}"
+              <button type="button" class="type-btn ${q.type === 'mcq' ? 'active' : ''}"
                       onclick="Builder._changeType('mcq')">Multiple Choice</button>
             </div>
           </div>
@@ -253,6 +262,7 @@ const Builder = {
         </div>
 
         <div class="modal-footer">
+          <div id="q-errors" class="form-errors hidden"></div>
           <button class="btn btn-ghost" onclick="Builder.closeModal()">Cancel</button>
           <button class="btn btn-primary" onclick="Builder.saveQuestion()">Save Question</button>
         </div>
@@ -271,7 +281,8 @@ const Builder = {
         <div class="mcq-options-list" id="mcq-options-list">
           ${q.mcqOptions.map((opt, i) => this._renderMcqOption(opt, i)).join('')}
         </div>
-        <button class="btn btn-sm btn-secondary" onclick="Builder._addMcqOption()">+ Add Option</button>
+        <button type="button" class="btn btn-sm btn-secondary"
+                onclick="Builder._addMcqOption()">+ Add Option</button>
       </div>
     `;
   },
@@ -288,7 +299,7 @@ const Builder = {
                  onchange="Builder._toggleCorrect('${opt.id}', this.checked)">
           <span>Correct</span>
         </label>
-        <button class="btn btn-sm btn-danger"
+        <button type="button" class="btn btn-sm btn-danger"
                 onclick="Builder._removeMcqOption('${opt.id}')">&#10005;</button>
       </div>
     `;
@@ -308,13 +319,16 @@ const Builder = {
       document.querySelectorAll('.week-checkbox input:checked')
     ).map(cb => cb.value);
 
-    const get = id => (document.getElementById(id) || {}).value || '';
+    const get = id => {
+      const el = document.getElementById(id);
+      return el ? el.value : '';
+    };
     q.subtopic     = get('q-subtopic').trim();
     q.prompt       = get('q-prompt').trim();
     q.instructions = get('q-instructions').trim();
     q.modelAnswer  = get('q-model-answer').trim();
 
-    // MCQ option texts (checkboxes are synced live via _toggleCorrect)
+    // Sync MCQ option text (isCorrect is maintained live via _toggleCorrect)
     if (q.type === 'mcq') {
       document.querySelectorAll('.mcq-opt-input').forEach(input => {
         const opt = q.mcqOptions.find(o => o.id === input.dataset.optId);
@@ -340,7 +354,7 @@ const Builder = {
     this._syncFormToQ();
     this._qForm.q.mcqOptions.push(Models.createMcqOption('', false));
     this._renderModal();
-    // Scroll new option into view
+    // Scroll new option into view and focus it
     setTimeout(() => {
       const list = document.getElementById('mcq-options-list');
       if (list && list.lastElementChild) {
@@ -361,12 +375,28 @@ const Builder = {
     if (opt) opt.isCorrect = isCorrect;
   },
 
+  // FIX: show inline errors inside the modal instead of a toast that
+  // auto-dismisses before the user can read it.
+  _showModalErrors(errors) {
+    const el = document.getElementById('q-errors');
+    if (!el) return;
+    el.innerHTML = errors.map(e => `<span>${this._esc(e)}</span>`).join('');
+    el.classList.remove('hidden');
+    el.scrollIntoView({ block: 'nearest' });
+  },
+
+  _clearModalErrors() {
+    const el = document.getElementById('q-errors');
+    if (el) { el.innerHTML = ''; el.classList.add('hidden'); }
+  },
+
   saveQuestion() {
     this._syncFormToQ();
+    this._clearModalErrors();
     const q = this._qForm.q;
     const errors = Models.validateQuestion(q);
     if (errors.length) {
-      this._toast(errors.join('\n'), 'error');
+      this._showModalErrors(errors);
       return;
     }
 
@@ -376,6 +406,9 @@ const Builder = {
     if (this._qForm.isNew) {
       this.currentTest.questionIds.push(q.id);
     }
+
+    // FIX: auto-persist structure change so it survives Back→Edit round-trips
+    this._autosaveTest();
 
     this.closeModal();
     this._renderEditor(document.getElementById('section-builder'));
@@ -396,6 +429,8 @@ const Builder = {
     const newIdx = idx + direction;
     if (newIdx < 0 || newIdx >= ids.length) return;
     [ids[idx], ids[newIdx]] = [ids[newIdx], ids[idx]];
+    // FIX: persist the new order immediately
+    this._autosaveTest();
     this._renderEditor(document.getElementById('section-builder'));
   },
 
@@ -406,7 +441,7 @@ const Builder = {
     delete copy.id;
     copy.prompt    = copy.prompt + ' (copy)';
     copy.createdAt = Date.now();
-    // Assign new IDs to MCQ options so they are independent
+    // Give each MCQ option a fresh ID so they are independent of the original
     if (copy.mcqOptions) {
       copy.mcqOptions = copy.mcqOptions.map(opt => ({ ...opt, id: generateId() }));
     }
@@ -415,19 +450,39 @@ const Builder = {
 
     const idx = this.currentTest.questionIds.indexOf(id);
     this.currentTest.questionIds.splice(idx + 1, 0, newQ.id);
+    // FIX: persist the new list immediately
+    this._autosaveTest();
     this._renderEditor(document.getElementById('section-builder'));
     this._toast('Question duplicated.');
   },
 
   removeQuestion(id) {
-    if (!confirm('Remove this question from the test?\n(The question will be deleted from storage if it is not used elsewhere.)')) return;
+    if (!confirm('Remove this question from the test?')) return;
     this.currentTest.questionIds = this.currentTest.questionIds.filter(qid => qid !== id);
-    // Delete question from storage if no other test references it
-    const otherTests = Object.values(Storage.getTests())
+
+    // Clean up orphaned question from storage if no test references it
+    const allTests = Object.values(Storage.getTests())
       .filter(t => t.id !== this.currentTest.id);
-    const usedElsewhere = otherTests.some(t => t.questionIds.includes(id));
+    const usedElsewhere = allTests.some(t => t.questionIds.includes(id));
     if (!usedElsewhere) Storage.deleteQuestion(id);
+
+    // FIX: persist the removal immediately
+    this._autosaveTest();
     this._renderEditor(document.getElementById('section-builder'));
+  },
+
+  // ── Auto-persist helper ──────────────────────────────────
+
+  /**
+   * Silently saves the current test's questionIds to storage whenever they
+   * change — but only if the test was already saved (has a title and exists
+   * in storage). New unsaved tests are not auto-saved here; the user must
+   * explicitly click Save Test.
+   */
+  _autosaveTest() {
+    if (!Storage.getTests()[this.currentTest.id]) return;
+    this.currentTest.updatedAt = Date.now();
+    Storage.saveTest(this.currentTest);
   },
 
   // ── Test CRUD ────────────────────────────────────────────
@@ -445,6 +500,7 @@ const Builder = {
   },
 
   saveTest() {
+    // Read current DOM values for title/desc (may differ from currentTest in memory)
     const title = (document.getElementById('test-title')?.value || '').trim();
     const desc  = (document.getElementById('test-desc')?.value  || '').trim();
     this.currentTest.title       = title;
@@ -472,6 +528,24 @@ const Builder = {
   },
 
   backToList() {
+    if (this.currentTest) {
+      const stored = Storage.getTests()[this.currentTest.id];
+
+      if (!stored) {
+        // New unsaved test — warn if it has a title or questions
+        const domTitle = document.getElementById('test-title')?.value?.trim() || '';
+        if (domTitle || this.currentTest.questionIds.length > 0) {
+          if (!confirm('This test has not been saved yet.\nGo back and discard it?')) return;
+        }
+      } else {
+        // Existing saved test — warn if title or description differs from storage
+        const domTitle = document.getElementById('test-title')?.value ?? stored.title;
+        const domDesc  = document.getElementById('test-desc')?.value  ?? stored.description;
+        if (domTitle.trim() !== stored.title || domDesc.trim() !== stored.description) {
+          if (!confirm('You have unsaved changes to the test title or description.\nDiscard them and go back?')) return;
+        }
+      }
+    }
     this.currentTest = null;
     this.render();
   },
@@ -479,16 +553,31 @@ const Builder = {
   // ── Import / Export ──────────────────────────────────────
 
   exportTest(id) {
-    const test = Storage.getTests()[id];
-    if (!test) return;
+    // FIX: when called from the editor, use the live in-memory state so that
+    // unsaved structural changes (reorders, new questions) are included.
+    let test;
+    if (this.currentTest && this.currentTest.id === id) {
+      // Merge current DOM title/desc into a copy of the in-memory test
+      const domTitle = document.getElementById('test-title')?.value?.trim();
+      const domDesc  = document.getElementById('test-desc')?.value?.trim();
+      test = {
+        ...this.currentTest,
+        title:       domTitle !== undefined ? domTitle : this.currentTest.title,
+        description: domDesc  !== undefined ? domDesc  : this.currentTest.description,
+      };
+    } else {
+      test = Storage.getTests()[id];
+      if (!test) return;
+    }
+
     const questions = Storage.getQuestions();
-    const testQs = test.questionIds.map(qid => questions[qid]).filter(Boolean);
-    const payload = { test, questions: testQs, exportedAt: Date.now() };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href     = url;
-    a.download = (test.title || 'test').replace(/[^a-z0-9]/gi, '_') + '.json';
+    const testQs    = test.questionIds.map(qid => questions[qid]).filter(Boolean);
+    const payload   = { test, questions: testQs, exportedAt: Date.now() };
+    const blob      = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url       = URL.createObjectURL(blob);
+    const a         = document.createElement('a');
+    a.href          = url;
+    a.download      = (test.title || 'test').replace(/[^a-z0-9]/gi, '_') + '.json';
     a.click();
     URL.revokeObjectURL(url);
   },

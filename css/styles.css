@@ -108,16 +108,16 @@ body {
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .btn-primary  { background: var(--accent); color: #fff; }
-.btn-primary:hover:not(:disabled)  { background: var(--accent-dark); }
+.btn-primary:hover:not(:disabled)   { background: var(--accent-dark); }
 
 .btn-secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
 .btn-secondary:hover:not(:disabled) { background: #e8eaf0; }
 
-.btn-danger    { background: var(--danger); color: #fff; }
-.btn-danger:hover:not(:disabled)   { background: var(--danger-dark); }
+.btn-danger   { background: var(--danger); color: #fff; }
+.btn-danger:hover:not(:disabled)    { background: var(--danger-dark); }
 
-.btn-ghost     { background: transparent; color: var(--text-muted); }
-.btn-ghost:hover:not(:disabled)    { background: var(--bg); color: var(--text); }
+.btn-ghost    { background: transparent; color: var(--text-muted); }
+.btn-ghost:hover:not(:disabled)     { background: var(--bg); color: var(--text); }
 
 .btn-sm { padding: 0.28rem 0.6rem; font-size: 0.8rem; }
 
@@ -152,6 +152,23 @@ body {
   box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.12);
 }
 textarea.form-input { line-height: 1.5; }
+
+/* ─── Inline form errors (shown inside modal footer) ──── */
+.form-errors {
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  border-radius: var(--radius-sm);
+  color: #9f1239;
+  font-size: 0.82rem;
+  padding: 0.55rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  flex: 1;
+  min-width: 0;
+}
+.form-errors.hidden { display: none; }
+.form-errors span   { display: block; }
 
 /* ─── Week Tags ───────────────────────────────────────── */
 .week-tag {
@@ -230,7 +247,7 @@ textarea.form-input { line-height: 1.5; }
   white-space: nowrap;
 }
 .meta { font-size: 0.77rem; color: var(--text-muted); }
-.test-card-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.test-card-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; flex-shrink: 0; }
 
 /* ─── Editor Meta Panel ───────────────────────────────── */
 .editor-meta {
@@ -301,9 +318,9 @@ textarea.form-input { line-height: 1.5; }
   border: none;
   cursor: pointer;
   color: #ccc;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   line-height: 1;
-  padding: 1px 3px;
+  padding: 2px 4px;
   border-radius: 2px;
   transition: color .1s, background .1s;
 }
@@ -333,9 +350,15 @@ textarea.form-input { line-height: 1.5; }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: default;
 }
-
-.question-row-actions { display: flex; gap: 0.35rem; align-items: center; flex-shrink: 0; }
+/* Question action buttons — fixed width, never wrap off-screen */
+.question-row-actions {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+  flex-shrink: 0;
+}
 
 /* ─── Empty State ─────────────────────────────────────── */
 .empty-state {
@@ -380,14 +403,16 @@ textarea.form-input { line-height: 1.5; }
   overflow-y: auto;
   flex: 1;
 }
+/* Footer: errors on the left, action buttons on the right */
 .modal-footer {
-  padding: 1rem 1.5rem;
+  padding: 0.9rem 1.5rem;
   border-top: 1px solid var(--border);
   display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
+  align-items: center;
+  gap: 0.75rem;
   flex-shrink: 0;
 }
+.modal-footer .btn { flex-shrink: 0; }
 
 /* ─── Type Selector (inside modal) ───────────────────── */
 .type-selector { display: flex; gap: 0.5rem; flex-wrap: wrap; }
@@ -428,13 +453,6 @@ textarea.form-input { line-height: 1.5; }
 .correct-label input { cursor: pointer; margin: 0; }
 .correct-label input:checked + span { color: #059669; font-weight: 600; }
 
-/* ─── Divider ─────────────────────────────────────────── */
-.divider {
-  border: none;
-  border-top: 1px solid var(--border);
-  margin: 1.25rem 0;
-}
-
 /* ─── Toast ───────────────────────────────────────────── */
 .toast {
   position: fixed;
@@ -448,6 +466,9 @@ textarea.form-input { line-height: 1.5; }
   box-shadow: var(--shadow-md);
   animation: toast-slide-in 0.2s ease;
   pointer-events: none;
+  /* Allow multi-line messages (used for saveTest validation errors) */
+  white-space: pre-wrap;
+  max-width: 340px;
 }
 .toast-success {
   background: var(--success-bg);
@@ -464,7 +485,7 @@ textarea.form-input { line-height: 1.5; }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* ─── Placeholder sections (runner / review / history) ── */
+/* ─── Placeholder sections ────────────────────────────── */
 .coming-soon {
   text-align: center;
   padding: 4rem 1rem;
@@ -485,11 +506,15 @@ textarea.form-input { line-height: 1.5; }
   .test-card { flex-direction: column; align-items: flex-start; }
   .test-card-info p { white-space: normal; }
 
+  /* On narrow screens, question actions wrap below the prompt */
   .question-row { flex-wrap: wrap; }
+  .question-row-info { width: 100%; }
   .question-row-actions { width: 100%; justify-content: flex-end; }
 
   .modal-body { padding: 1rem; }
   .modal-header, .modal-footer { padding: 0.9rem 1rem; }
+  .modal-footer { flex-wrap: wrap; }
+  .form-errors { width: 100%; }
 
   .type-selector { flex-direction: column; }
   .type-btn { text-align: left; }
