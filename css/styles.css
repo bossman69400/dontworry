@@ -900,3 +900,371 @@ textarea.form-input { line-height: 1.5; }
   .complete-card { padding: 1.5rem 1rem; }
   .c-stat-value  { font-size: 1.2rem; }
 }
+
+/* ═══════════════════════════════════════════════════════
+   REVIEW — Review Answers flow
+   ═══════════════════════════════════════════════════════ */
+
+/* ─── Session list ────────────────────────────────────── */
+.weak-inline { color: var(--danger); font-weight: 600; }
+
+/* ─── Page title (truncate if long) ──────────────────── */
+.review-page-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ─── Summary block ───────────────────────────────────── */
+.review-summary {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.85rem 1.25rem 0.85rem;
+  margin-bottom: 0.75rem;
+  box-shadow: var(--shadow);
+}
+.summary-grid {
+  display: flex;
+  flex-wrap: wrap;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-bottom: 0;
+}
+.summary-stat {
+  flex: 1;
+  min-width: 64px;
+  padding: 0.5rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  border-right: 1px solid var(--border);
+}
+.summary-stat:last-child { border-right: none; }
+.summary-stat-warn .summary-stat-value { color: var(--danger); }
+.summary-stat-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text);
+}
+.summary-stat-label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  text-align: center;
+  white-space: nowrap;
+}
+.summary-weak-weeks {
+  margin-top: 0.65rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  font-size: 0.8rem;
+}
+.summary-weak-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* ─── Filter bar ──────────────────────────────────────── */
+.review-filter-bar {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.85rem 1.25rem;
+  margin-bottom: 1rem;
+  box-shadow: var(--shadow);
+}
+.filter-section { display: flex; flex-direction: column; gap: 0.55rem; }
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.filter-status-row { min-height: 28px; }
+.filter-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  min-width: 46px;
+  flex-shrink: 0;
+}
+.filter-chips { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+.filter-chip {
+  padding: 0.22rem 0.6rem;
+  border-radius: 99px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--font);
+  color: var(--text-muted);
+  transition: all .15s;
+  white-space: nowrap;
+}
+.filter-chip:hover        { background: var(--bg); color: var(--text); }
+.filter-chip-active       { background: var(--accent); border-color: var(--accent); color: #fff; }
+.filter-chip-active:hover { background: var(--accent-dark); }
+.filter-chip-weak-active  { background: var(--danger); border-color: var(--danger); color: #fff; }
+.filter-chip-weak-active:hover { background: var(--danger-dark); }
+.filter-count {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* ─── Review cards container ──────────────────────────── */
+.review-cards { display: flex; flex-direction: column; gap: 1rem; }
+
+/* ─── Individual review card ──────────────────────────── */
+.review-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.review-card-weak {
+  border-left: 3px solid var(--danger);
+}
+.review-card-header {
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+.review-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+.q-index {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: #e8eaf0;
+  padding: 0.1rem 0.4rem;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+.weak-badge {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  background: #fff1f2;
+  color: var(--danger);
+  border: 1px solid #fecdd3;
+  border-radius: var(--radius-sm);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Card body sections */
+.review-card-body {}
+.review-card-prompt {
+  padding: 1rem 1.25rem 0.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.65;
+  color: var(--text);
+  word-break: break-word;
+}
+.review-instructions {
+  margin: 0 1.25rem 0.5rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  background: var(--bg);
+  border-left: 3px solid var(--border);
+  padding: 0.4rem 0.75rem;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  word-break: break-word;
+}
+
+/* Test-time flags row */
+.test-flags-row {
+  padding: 0.3rem 1.25rem 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.test-flag-chip {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  background: #fef9c3;
+  border: 1px solid #eab308;
+  color: #713f12;
+  border-radius: 99px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+/* ─── Answer grid ─────────────────────────────────────── */
+.answer-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  padding: 0.5rem 1.25rem 0.75rem;
+  align-items: start;
+}
+.answer-col {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.answer-col-header {
+  background: var(--bg);
+  padding: 0.35rem 0.65rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.answer-col-body {
+  padding: 0.6rem 0.75rem;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  word-break: break-word;
+  min-height: 40px;
+}
+.no-answer  { color: var(--text-muted); font-style: italic; font-size: 0.875rem; }
+.typed-answer { white-space: pre-wrap; }
+.mcq-answer-text { font-weight: 500; }
+.model-answer-text { white-space: pre-wrap; line-height: 1.65; }
+.model-mcq-correct {
+  font-size: 0.82rem;
+  background: var(--success-bg);
+  color: var(--success-text);
+  border: 1px solid var(--success-bdr);
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.model-toggle-btn {
+  background: none;
+  border: none;
+  font-size: 0.72rem;
+  color: var(--accent);
+  cursor: pointer;
+  font-family: var(--font);
+  font-weight: 600;
+  padding: 0;
+  text-transform: none;
+}
+.model-toggle-btn:hover { text-decoration: underline; }
+.model-show-placeholder {
+  display: flex;
+  align-items: flex-start;
+  padding-top: 0.25rem;
+}
+
+/* ─── Review controls ─────────────────────────────────── */
+.review-controls {
+  padding: 0.85rem 1.25rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.control-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.control-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  min-width: 70px;
+  flex-shrink: 0;
+}
+
+/* Grade buttons */
+.grade-btns { display: flex; gap: 0.4rem; }
+.grade-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.35rem 0.8rem;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  font-family: var(--font);
+  transition: all .15s;
+  min-width: 54px;
+  line-height: 1.2;
+}
+.grade-btn:hover:not(.grade-active) { background: var(--bg); border-color: #b0bcd8; }
+.grade-num { font-size: 1rem; font-weight: 700; color: var(--text); }
+.grade-lbl { font-size: 0.65rem; color: var(--text-muted); }
+.grade-btn.grade-active .grade-lbl { color: inherit; opacity: 0.8; }
+.grade-btn.grade-active .grade-num { color: inherit; }
+
+.grade-wrong-active   { background: #fff1f2; border-color: var(--danger);    color: var(--danger);        }
+.grade-partial-active { background: #fef3c7; border-color: #eab308;          color: #92400e;              }
+.grade-correct-active { background: var(--success-bg); border-color: #6ee7b7; color: var(--success-text); }
+
+/* Retry Later toggle */
+.retry-btn {
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--font);
+  color: var(--text-muted);
+  transition: all .15s;
+  white-space: nowrap;
+}
+.retry-btn:hover { background: var(--bg); }
+.retry-active    { background: #eef0fb; border-color: var(--accent); color: var(--accent); font-weight: 600; }
+
+/* Error reason */
+.error-reason-wrap { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 0.4rem; }
+.error-reason-select { font-size: 0.85rem; padding: 0.4rem 0.6rem; resize: none; }
+.reason-text-input   { font-size: 0.85rem; resize: vertical; }
+
+/* ─── Responsive (review) ─────────────────────────────── */
+@media (max-width: 640px) {
+  .summary-grid { flex-wrap: wrap; }
+  .summary-stat { min-width: 56px; flex: 1 1 auto; }
+
+  .review-card-header, .review-card-body { }
+  .review-card-prompt, .review-instructions,
+  .test-flags-row, .review-controls { padding-left: 1rem; padding-right: 1rem; }
+  .answer-grid { grid-template-columns: 1fr; padding-left: 1rem; padding-right: 1rem; }
+
+  .control-row  { flex-direction: column; align-items: flex-start; }
+  .control-label { min-width: unset; }
+  .grade-btns   { width: 100%; }
+  .grade-btn    { flex: 1; }
+
+  .error-reason-wrap { min-width: unset; width: 100%; }
+}

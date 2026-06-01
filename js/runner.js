@@ -491,7 +491,7 @@ const Runner = {
           </div>
 
           <div class="complete-actions">
-            <a class="btn btn-primary"    href="#review">Review Answers &rarr;</a>
+            <button class="btn btn-primary" onclick="Runner.goToReview()">Review Answers &rarr;</button>
             <button class="btn btn-secondary" onclick="Runner.newSession()">Take Another Test</button>
           </div>
         </div>
@@ -510,7 +510,14 @@ const Runner = {
     return `<div class="c-stat-divider"></div>`;
   },
 
-  newSession() {
+  goToReview() {
+    if (this.session && this.session.completedAt) {
+      Review.openSession(this.session.id);
+    }
+    Router.navigate('review');
+  },
+
+    newSession() {
     this.session    = null;
     this.currentIdx = 0;
     this.render();
