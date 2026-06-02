@@ -1629,3 +1629,128 @@ textarea.form-input { line-height: 1.5; }
   .md-rendered { font-size: 0.9rem; }
   .md-rendered table { font-size: 0.8rem; }
 }
+
+/* ═══════════════════════════════════════════════════════
+   STUDY FEATURES — status tags, weekly summary, collapse
+   ═══════════════════════════════════════════════════════ */
+
+/* ─── Question status badges (read-only display) ──────── */
+.status-badge {
+  display: inline-block;
+  padding: 0.12rem 0.45rem;
+  border-radius: 99px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.status-new      { background: #f3f4f6; color: #6b7280; }
+.status-learning { background: #fef3c7; color: #92400e; }
+.status-solid    { background: #dbeafe; color: #1d4ed8; }
+.status-mastered { background: #dcfce7; color: #166534; }
+
+/* ─── Status selector in Builder modal ───────────────── */
+.status-selector { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+
+.status-btn {
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--font);
+  color: var(--text-muted);
+  transition: all .15s;
+}
+.status-btn:hover:not(.status-btn-active) { background: var(--bg); color: var(--text); }
+
+.status-btn-new.status-btn-active      { background: #9ca3af; border-color: #9ca3af; color: #fff; }
+.status-btn-learning.status-btn-active { background: #d97706; border-color: #d97706; color: #fff; }
+.status-btn-solid.status-btn-active    { background: #2563eb; border-color: #2563eb; color: #fff; }
+.status-btn-mastered.status-btn-active { background: #16a34a; border-color: #16a34a; color: #fff; }
+
+/* ─── Status buttons in Review cards ─────────────────── */
+.status-btns-row { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+
+.status-btn-sm {
+  padding: 0.2rem 0.55rem;
+  border-radius: 99px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 0.72rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--font);
+  color: var(--text-muted);
+  transition: all .12s;
+  white-space: nowrap;
+}
+.status-btn-sm:hover { background: var(--bg); color: var(--text); }
+
+.status-btn-sm-new.status-btn-sm-active      { background: #9ca3af; border-color: #9ca3af; color: #fff; }
+.status-btn-sm-learning.status-btn-sm-active { background: #d97706; border-color: #d97706; color: #fff; }
+.status-btn-sm-solid.status-btn-sm-active    { background: #2563eb; border-color: #2563eb; color: #fff; }
+.status-btn-sm-mastered.status-btn-sm-active { background: #16a34a; border-color: #16a34a; color: #fff; }
+
+/* ─── Weekly summary (History) ────────────────────────── */
+.weekly-summary {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.85rem 1.25rem;
+  margin-bottom: 1rem;
+  box-shadow: var(--shadow);
+}
+.weekly-table-wrap { overflow-x: auto; }
+.weekly-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.82rem;
+  min-width: 540px; /* scroll horizontally on mobile rather than wrap */
+}
+.weekly-table th,
+.weekly-table td {
+  border: 1px solid var(--border);
+  padding: 0.3rem 0.55rem;
+  text-align: center;
+  white-space: nowrap;
+}
+.weekly-table th:first-child,
+.weekly-table td:first-child { text-align: left; }
+.weekly-table th { background: var(--bg); font-weight: 600; font-size: 0.78rem; }
+.weekly-table tr:nth-child(even) td { background: rgba(0,0,0,.015); }
+.week-row-empty td { color: var(--text-muted); opacity: 0.5; }
+.num-cell   { font-variant-numeric: tabular-nums; }
+.stat-warn  { color: var(--danger); font-weight: 700; }
+.weekly-note {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* ─── Model answer collapse/expand ────────────────────── */
+/* .model-answer-body is hidden/shown; section header stays visible */
+.model-answer-body.hidden {
+  display: none;
+}
+/* Show a subtle "..." hint where the body was, inside the header */
+.model-toggle-btn {
+  font-size: 0.72rem;
+  color: var(--accent);
+  cursor: pointer;
+  font-family: var(--font);
+  font-weight: 600;
+  padding: 0;
+  background: none;
+  border: none;
+}
+.model-toggle-btn:hover { text-decoration: underline; }
+
+/* When body is collapsed, add a faint stripe to the header to signal content below */
+.model-answer-section:has(.model-answer-body.hidden) .answer-col-header {
+  border-bottom: none;
+  color: var(--text-muted);
+}

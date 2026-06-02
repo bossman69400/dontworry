@@ -141,7 +141,7 @@ const Review = {
                   title="Export this session as JSON">Export</button>
           <button class="btn btn-secondary" id="global-model-btn"
                   onclick="Review.toggleAllModelAnswers()">
-            ${this._showModelAnswers ? 'Hide model answers' : 'Show model answers'}
+            ${this._showModelAnswers ? 'Collapse all answers' : 'Expand all answers'}
           </button>
           <button class="btn btn-primary" id="redo-weak-btn"
                   onclick="Review.redoWeak()"
@@ -387,32 +387,35 @@ const Review = {
         </p>
       </div>`;
     } else {
-      el.innerHTML = filtered.map(({ q, r, idx }) => this._cardHTML(q, r, idx)).join('');
+      const allQs = Storage.getQuestions();
+      el.innerHTML = filtered.map(({ q, r, idx }) => this._cardHTML(q, r, idx, allQs)).join('');
     }
-    // Re-apply global model visibility
+    // Re-apply global collapse
     if (!this._showModelAnswers) {
-      el.querySelectorAll('.model-answer-section').forEach(s => s.classList.add('hidden'));
-      el.querySelectorAll('.model-show-placeholder').forEach(ph => ph.style.display = '');
+      el.querySelectorAll('.model-answer-body').forEach(b => b.classList.add('hidden'));
+      el.querySelectorAll('.model-toggle-btn').forEach(btn => btn.textContent = 'Expand');
     }
-    // Re-apply per-card hidden states
+    // Re-apply per-card collapse states
     this._hiddenModelAnswers.forEach(qId => {
-      const s   = document.getElementById('model-' + qId);
-      const ph  = document.getElementById('model-ph-' + qId);
-      if (s)  s.classList.add('hidden');
-      if (ph) ph.classList.remove('hidden');
-      const btn = s && s.querySelector('.model-toggle-btn');
-      if (btn) btn.textContent = 'Show';
+      const body = document.getElementById('model-body-' + qId);
+      const btn  = document.querySelector('#model-' + qId + ' .model-toggle-btn');
+      if (body) body.classList.add('hidden');
+      if (btn)  btn.textContent = 'Expand';
     });
     // Typeset math in all newly rendered markdown content
     typesetMath(el);
   },
 
-  _cardHTML(q, r, originalIdx) {
+  _cardHTML(q, r, originalIdx, allQuestions) {
     const typeLabel = { short: 'Short Answer', long: 'Long Answer', mcq: 'MCQ' }[q.type] || q.type;
     const weak      = this._isWeak(r);
     const weekBadges = q.weekTags.map(w =>
       `<span class="week-tag week-tag-${w.replace(/\D/g, '')}">${w}</span>`
     ).join('');
+    const liveQ      = (allQuestions || Storage.getQuestions())[q.id];
+    const status     = (liveQ && liveQ.status) || 'new';
+    const statusLbl  = { new: 'New', learning: 'Learning', solid: 'Solid', mastered: 'Mastered' }[status];
+    const isCollapsed = this._hiddenModelAnswers.has(q.id) || !this._showModelAnswers;
 
     const modelHidden = !this._showModelAnswers || this._hiddenModelAnswers.has(q.id);
 
@@ -425,6 +428,7 @@ const Review = {
             <span class="type-badge type-${q.type}">${typeLabel}</span>
             ${weekBadges}
             ${q.subtopic ? `<span class="subtopic-badge">${this._esc(q.subtopic)}</span>` : ''}
+            <span class="status-badge status-${status}">${statusLbl}</span>
             ${weak ? `<span class="weak-badge">Weak</span>` : ''}
           </div>
         </div>
@@ -444,21 +448,19 @@ const Review = {
               <div class="answer-col-header">Your Answer</div>
               <div class="answer-col-body">${this._yourAnswerHTML(q, r)}</div>
             </div>
-            <div class="answer-col model-answer-section${modelHidden ? ' hidden' : ''}"
+            <div class="answer-col model-answer-section"
                  id="model-${q.id}">
               <div class="answer-col-header">
                 Model Answer
                 <button class="model-toggle-btn"
                         onclick="Review.toggleModelAnswer('${q.id}')">
-                  ${modelHidden ? 'Show' : 'Hide'}
+                  ${isCollapsed ? 'Expand' : 'Collapse'}
                 </button>
               </div>
-              <div class="answer-col-body">${this._modelAnswerHTML(q)}</div>
-            </div>
-            <div class="model-show-placeholder ${modelHidden ? '' : 'hidden'}"
-                 id="model-ph-${q.id}">
-              <button class="btn btn-sm btn-ghost"
-                      onclick="Review.toggleModelAnswer('${q.id}')">Show model answer</button>
+              <div id="model-body-${q.id}"
+                   class="answer-col-body model-answer-body${isCollapsed ? ' hidden' : ''}">
+                ${this._modelAnswerHTML(q)}
+              </div>
             </div>
           </div>
 
@@ -643,44 +645,48 @@ const Review = {
   // ── Model answer toggle ───────────────────────────────────
 
   toggleModelAnswer(questionId) {
-    const section = document.getElementById('model-'    + questionId);
-    const ph      = document.getElementById('model-ph-' + questionId);
-    if (!section) return;
+    const body    = document.getElementById('model-body-' + questionId);
+    const section = document.getElementById('model-' + questionId);
+    const btn     = section && section.querySelector('.model-toggle-btn');
+    if (!body) return;
 
-    const nowHidden = section.classList.toggle('hidden');
-    if (ph) ph.classList.toggle('hidden', !nowHidden);
+    const nowCollapsed = body.classList.toggle('hidden');
+    if (btn) btn.textContent = nowCollapsed ? 'Expand' : 'Collapse';
 
-    const btn = section.querySelector('.model-toggle-btn');
-    if (btn) btn.textContent = nowHidden ? 'Show' : 'Hide';
-
-    if (nowHidden) this._hiddenModelAnswers.add(questionId);
-    else           this._hiddenModelAnswers.delete(questionId);
+    if (nowCollapsed) {
+      this._hiddenModelAnswers.add(questionId);
+    } else {
+      this._hiddenModelAnswers.delete(questionId);
+      typesetMath(body);
+    }
   },
 
   toggleAllModelAnswers() {
     this._showModelAnswers = !this._showModelAnswers;
-    const cards = document.getElementById('review-cards');
+    const collapse = !this._showModelAnswers;
+    const cards    = document.getElementById('review-cards');
     if (!cards) return;
 
-    cards.querySelectorAll('.model-answer-section').forEach(s => {
-      s.classList.toggle('hidden', !this._showModelAnswers);
-    });
-    cards.querySelectorAll('.model-show-placeholder').forEach(ph => {
-      ph.classList.toggle('hidden', this._showModelAnswers);
+    cards.querySelectorAll('.model-answer-body').forEach(b => {
+      b.classList.toggle('hidden', collapse);
     });
     cards.querySelectorAll('.model-toggle-btn').forEach(btn => {
-      btn.textContent = this._showModelAnswers ? 'Hide' : 'Show';
+      btn.textContent = collapse ? 'Expand' : 'Collapse';
     });
 
-    if (!this._showModelAnswers) {
-      // Mark all as hidden
+    if (collapse) {
       this.selectedSession.questionSnapshot.forEach(q => this._hiddenModelAnswers.add(q.id));
     } else {
       this._hiddenModelAnswers.clear();
+      cards.querySelectorAll('.model-answer-body').forEach(b => typesetMath(b));
     }
 
-    const globalBtn = document.getElementById('global-model-btn');
-    if (globalBtn) globalBtn.textContent = this._showModelAnswers ? 'Hide model answers' : 'Show model answers';
+    this._syncGlobalModelBtn();
+  },
+
+  _syncGlobalModelBtn() {
+    const btn = document.getElementById('global-model-btn');
+    if (btn) btn.textContent = this._showModelAnswers ? 'Collapse all answers' : 'Expand all answers';
   },
 
   // ── Weak state helpers ────────────────────────────────────
@@ -825,6 +831,26 @@ const Review = {
     const defaults = Models.createResponse();
     Object.keys(defaults).forEach(k => { if (!(k in r)) r[k] = defaults[k]; });
     return r;
+  },
+
+  // ── Question status editing ─────────────────────────────
+
+  setQuestionStatus(questionId, status) {
+    const all = Storage.getQuestions();
+    if (!all[questionId]) return;
+    all[questionId].status = status;
+    Storage.saveQuestion(all[questionId]);
+    showSaved();
+    // Update all DOM references for this question without re-rendering
+    const cards = document.querySelectorAll(`.review-card[data-qid="${questionId}"]`);
+    const lbl   = { new: 'New', learning: 'Learning', solid: 'Solid', mastered: 'Mastered' };
+    cards.forEach(card => {
+      const badge = card.querySelector('.status-badge');
+      if (badge) { badge.className = `status-badge status-${status}`; badge.textContent = lbl[status]; }
+      card.querySelectorAll('.status-btn-sm').forEach(btn => {
+        btn.classList.toggle('status-btn-sm-active', btn.dataset.status === status);
+      });
+    });
   },
 
   // ── Session export ───────────────────────────────────────

@@ -161,6 +161,7 @@ const Builder = {
             <span class="type-badge type-${q.type}">${typeLabel}</span>
             ${weekBadges}
             ${q.subtopic ? `<span class="subtopic-badge">${this._esc(q.subtopic)}</span>` : ''}
+            <span class="status-badge status-${q.status || 'new'}">${{ new: 'New', learning: 'Learning', solid: 'Solid', mastered: 'Mastered' }[q.status || 'new']}</span>
           </div>
           <p class="question-prompt-preview"
              title="${this._esc(q.prompt)}">${this._esc(preview)}</p>
@@ -274,6 +275,19 @@ const Builder = {
             <textarea id="q-model-answer" class="form-input" rows="4"
                       placeholder="Enter the ideal answer or key marking points\u2026 (Markdown supported)">${this._esc(q.modelAnswer)}</textarea>
             <div id="q-model-answer-preview" class="md-rendered md-preview-panel hidden"></div>
+          </div>
+
+          <div class="form-group">
+            <label>Learning Status</label>
+            <div class="status-selector">
+              ${['new','learning','solid','mastered'].map(s => `
+                <button type="button"
+                        class="status-btn status-btn-${s} ${(q.status || 'new') === s ? 'status-btn-active' : ''}"
+                        data-status="${s}"
+                        onclick="Builder._setStatus('${s}')"
+                >${{ new:'New', learning:'Learning', solid:'Solid', mastered:'Mastered' }[s]}</button>
+              `).join('')}
+            </div>
           </div>
 
         </div>
@@ -701,6 +715,7 @@ const Builder = {
         text:      o.text      || '',
         isCorrect: !!o.isCorrect,
       })) : [],
+      status:       ['new','learning','solid','mastered'].includes(raw.status) ? raw.status : 'new',
       createdAt:    raw.createdAt || Date.now(),
       updatedAt:    Date.now(),
     };
@@ -755,6 +770,15 @@ const Builder = {
   },
 
   // ── Utilities ────────────────────────────────────────────
+
+  // ── Question status ─────────────────────────────────────────
+
+  _setStatus(status) {
+    if (this._qForm) this._qForm.q.status = status;
+    document.querySelectorAll('.status-btn').forEach(btn => {
+      btn.classList.toggle('status-btn-active', btn.dataset.status === status);
+    });
+  },
 
   // ── Markdown field preview toggle ──────────────────────────
 

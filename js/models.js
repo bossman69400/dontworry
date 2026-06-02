@@ -21,6 +21,7 @@ const Models = {
       subtopic:    data.subtopic    || '',
       modelAnswer: data.modelAnswer || '',
       mcqOptions:  data.mcqOptions  || [],         // only used when type === 'mcq'
+      status:      data.status      || 'new',      // 'new' | 'learning' | 'solid' | 'mastered'
       createdAt:   data.createdAt   || Date.now(),
       updatedAt:   Date.now(),
     };

@@ -9,6 +9,7 @@
  */
 const History = {
   _sort:    'newest',   // 'newest' | 'oldest' | 'best' | 'worst'
+  _showWeeklySummary: false,
   _filters: {
     status: 'all',      // 'all' | 'completed' | 'incomplete'
     type:   'all',      // 'all' | 'normal' | 'redo'
@@ -31,8 +32,16 @@ const History = {
         <h1>History</h1>
         <span class="page-subtitle">${allCount} session${allCount !== 1 ? 's' : ''} total</span>
         <div class="header-actions">
+          <button class="btn btn-sm btn-secondary" onclick="History.toggleWeeklySummary()"
+                  title="Per-week performance breakdown from reviewed sessions">
+            ${this._showWeeklySummary ? 'Hide summary' : 'Weekly Summary'}
+          </button>
           ${allCount > 0 ? '<button class="btn btn-secondary btn-sm" onclick="History.exportAllSessions()" title="Download all sessions as JSON">Export All</button>' : ''}
         </div>
+      </div>
+
+      <div id="weekly-summary-section" class="${this._showWeeklySummary ? '' : 'hidden'}">
+        ${this._showWeeklySummary ? this._weekSummaryHTML() : ''}
       </div>
 
       <div class="history-controls">
@@ -228,7 +237,101 @@ const History = {
 
   // ── Filter / sort logic ───────────────────────────────────
 
-  _filteredSorted() {
+  // ── Weekly Summary ───────────────────────────────────────────
+
+  toggleWeeklySummary() {
+    this._showWeeklySummary = !this._showWeeklySummary;
+    const el = document.getElementById('weekly-summary-section');
+    if (!el) return;
+    if (this._showWeeklySummary) {
+      el.innerHTML = this._weekSummaryHTML();
+      el.classList.remove('hidden');
+    } else {
+      el.classList.add('hidden');
+    }
+    // Update button text
+    const btn = document.querySelector('.page-header .btn-secondary');
+    if (btn && btn.textContent.includes('Summary') || btn && btn.textContent.includes('summary')) {
+      btn.textContent = this._showWeeklySummary ? 'Hide summary' : 'Weekly Summary';
+    }
+  },
+
+  _weeklyStats() {
+    const sessions = Object.values(Storage.getSessions()).filter(s => s.completedAt);
+    const defaults = Models.createResponse();
+    const stats    = {};
+    for (let w = 1; w <= 12; w++) {
+      stats[`Week ${w}`] = { total: 0, graded: 0, gradeSum: 0,
+        usedNotes: 0, notConfident: 0, flagged: 0, retryLater: 0, weak: 0 };
+    }
+    sessions.forEach(session => {
+      (session.questionSnapshot || []).forEach(q => {
+        const r = { ...defaults, ...(session.responses[q.id] || {}) };
+        (q.weekTags || []).forEach(w => {
+          if (!stats[w]) return;
+          stats[w].total++;
+          if (r.selfGrade !== null) { stats[w].graded++; stats[w].gradeSum += r.selfGrade; }
+          if (r.usedNotes)    stats[w].usedNotes++;
+          if (r.notConfident) stats[w].notConfident++;
+          if (r.flagged)      stats[w].flagged++;
+          if (r.retryLater)   stats[w].retryLater++;
+          if (r.usedNotes || r.notConfident || r.flagged || r.retryLater ||
+              (r.selfGrade !== null && r.selfGrade < 1)) stats[w].weak++;
+        });
+      });
+    });
+    return stats;
+  },
+
+  _weekSummaryHTML() {
+    const stats  = this._weeklyStats();
+    const hasAny = Object.values(stats).some(s => s.total > 0);
+    if (!hasAny) {
+      return `<div class="empty-state" style="padding:1rem 0 1.5rem">
+        <p>No session data yet. Complete and grade some tests to see per-week stats.</p>
+      </div>`;
+    }
+    const rows = Object.entries(stats).map(([week, s]) => {
+      const n      = parseInt(week.replace(/[^0-9]/g, ''));
+      const avg    = s.graded > 0 ? (s.gradeSum / s.graded).toFixed(2) : '—';
+      const dim    = s.total === 0;
+      const lowAvg = s.graded > 0 && (s.gradeSum / s.graded) < 0.6;
+      return `<tr class="${dim ? 'week-row-empty' : ''}">
+        <td><span class="week-tag week-tag-${n}">${week}</span></td>
+        <td class="num-cell">${s.total  || '—'}</td>
+        <td class="num-cell">${s.graded || '—'}</td>
+        <td class="num-cell${lowAvg ? ' stat-warn' : ''}">${avg}</td>
+        <td class="num-cell">${s.usedNotes    || '—'}</td>
+        <td class="num-cell">${s.notConfident || '—'}</td>
+        <td class="num-cell">${s.flagged      || '—'}</td>
+        <td class="num-cell">${s.retryLater   || '—'}</td>
+        <td class="num-cell${s.weak > 0 ? ' stat-warn' : ''}">${s.weak || '—'}</td>
+      </tr>`;
+    }).join('');
+    return `
+      <div class="weekly-summary">
+        <div class="weekly-table-wrap">
+          <table class="weekly-table">
+            <thead><tr>
+              <th>Week</th>
+              <th title="Total session-question pairs">Total</th>
+              <th title="Questions graded">Graded</th>
+              <th title="Average self-grade">Avg</th>
+              <th title="Used notes during test">Notes</th>
+              <th title="Not confident during test">Unconf.</th>
+              <th title="Flagged during test">Flagged</th>
+              <th title="Marked Retry Later in review">Retry</th>
+              <th title="Weak (any flag or grade &lt; 1)">Weak</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+        <p class="weekly-note">Multi-week questions count toward each tagged week. Each session is counted independently.</p>
+      </div>
+    `;
+  },
+
+    _filteredSorted() {
     const sessions = Object.values(Storage.getSessions());
     const f        = this._filters;
 
