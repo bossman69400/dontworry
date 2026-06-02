@@ -160,7 +160,7 @@ const Builder = {
           <div class="question-row-meta">
             <span class="type-badge type-${q.type}">${typeLabel}</span>
             ${weekBadges}
-            ${q.subtopic ? `<span class="subtopic-badge">${this._esc(q.subtopic)}</span>` : ''}
+            ${getTags(q).map(t => `<span class="tag-badge">${this._esc(t)}</span>`).join('')}
             <span class="status-badge status-${q.status || 'new'}">${{ new: 'New', learning: 'Learning', solid: 'Solid', mastered: 'Mastered' }[q.status || 'new']}</span>
           </div>
           <p class="question-prompt-preview"
@@ -191,6 +191,11 @@ const Builder = {
       });
       isNew = true;
     }
+    // Migrate old subtopic field to tags array
+    if (!Array.isArray(q.tags)) {
+      q.tags = q.subtopic && q.subtopic.trim() ? [q.subtopic.trim()] : [];
+    }
+    delete q.subtopic; // keep the object clean going forward
     this._qForm = { q, isNew };
     this._renderModal();
   },
@@ -236,10 +241,16 @@ const Builder = {
           </div>
 
           <div class="form-group">
-            <label for="q-subtopic">Subtopic <span class="hint">(optional)</span></label>
-            <input type="text" id="q-subtopic" class="form-input"
-                   value="${this._esc(q.subtopic)}"
-                   placeholder="e.g. Enzyme Kinetics">
+            <label>Tags <span class="hint">(optional &mdash; press Enter or comma to add)</span></label>
+            <div class="tag-input-wrap" id="tag-input-wrap"
+                 onclick="document.getElementById('tag-text-input').focus()">
+              ${(q.tags||[]).map((t,i) =>
+                `<span class="tag-chip">${this._esc(t)}<button type="button" class="tag-chip-remove" data-idx="${i}" onclick="Builder.removeTag(parseInt(this.dataset.idx))" tabindex="-1">&times;</button></span>`
+              ).join('')}
+              <input type="text" id="tag-text-input" class="tag-text-input"
+                     placeholder="${(q.tags||[]).length===0?'e.g. enzymes, lipids':''}"  
+                     onkeydown="Builder.onTagKeydown(event)">
+            </div>
           </div>
 
           <div class="form-group">
@@ -354,7 +365,7 @@ const Builder = {
       const el = document.getElementById(id);
       return el ? el.value : '';
     };
-    q.subtopic     = get('q-subtopic').trim();
+    // tags are maintained in _qForm.q.tags directly via onTagKeydown/removeTag
     q.prompt       = get('q-prompt').trim();
     q.instructions = get('q-instructions').trim();
     q.modelAnswer  = get('q-model-answer').trim();
@@ -708,7 +719,10 @@ const Builder = {
       prompt,
       instructions: raw.instructions || '',
       weekTags:     Array.isArray(raw.weekTags) ? raw.weekTags : [],
-      subtopic:     raw.subtopic     || '',
+      // Prefer tags array; fall back to old subtopic string
+      tags:         Array.isArray(raw.tags)
+                    ? raw.tags.filter(t => typeof t === 'string' && t.trim()).map(t => t.trim())
+                    : (raw.subtopic && raw.subtopic.trim() ? [raw.subtopic.trim()] : []),
       modelAnswer:  raw.modelAnswer  || '',
       mcqOptions:   Array.isArray(raw.mcqOptions) ? raw.mcqOptions.map(o => ({
         id:        o.id        || generateId(),
@@ -770,6 +784,54 @@ const Builder = {
   },
 
   // ── Utilities ────────────────────────────────────────────
+
+  // ── Tag chip input methods ────────────────────────────────
+
+  onTagKeydown(event) {
+    if (event.key !== 'Enter' && event.key !== ',') {
+      if (event.key === 'Backspace' && !event.target.value) {
+        // Backspace on empty input removes last tag
+        if (this._qForm && this._qForm.q.tags.length > 0) {
+          this._qForm.q.tags.pop();
+          this._renderTagChips();
+        }
+      }
+      return;
+    }
+    event.preventDefault();
+    const input = event.target;
+    const value = input.value.trim();
+    if (!value) return;
+    // Deduplicate case-insensitively
+    const existing = (this._qForm.q.tags || []).map(t => t.toLowerCase());
+    if (existing.includes(value.toLowerCase())) { input.value = ''; return; }
+    this._qForm.q.tags.push(value);
+    this._renderTagChips();
+    input.value = '';
+    input.placeholder = '';
+  },
+
+  removeTag(idx) {
+    if (!this._qForm) return;
+    this._qForm.q.tags.splice(idx, 1);
+    this._renderTagChips();
+    // Restore placeholder if no tags left
+    const input = document.getElementById('tag-text-input');
+    if (input && this._qForm.q.tags.length === 0) input.placeholder = 'e.g. enzymes, lipids';
+  },
+
+  _renderTagChips() {
+    const wrap = document.getElementById('tag-input-wrap');
+    if (!wrap || !this._qForm) return;
+    const input = wrap.querySelector('.tag-text-input');
+    wrap.querySelectorAll('.tag-chip').forEach(c => c.remove());
+    (this._qForm.q.tags || []).forEach((t, i) => {
+      const chip = document.createElement('span');
+      chip.className = 'tag-chip';
+      chip.innerHTML = `${this._esc(t)}<button type="button" class="tag-chip-remove" data-idx="${i}" onclick="Builder.removeTag(parseInt(this.dataset.idx))" tabindex="-1">&times;</button>`;
+      wrap.insertBefore(chip, input);
+    });
+  },
 
   // ── Question status ─────────────────────────────────────────
 

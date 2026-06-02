@@ -104,7 +104,7 @@ const Review = {
     const session = Storage.getSessions()[id];
     if (!session) return;
     this.selectedSession = session;
-    this._filters = { weeks: [], flags: [], grade: 'all', unanswered: false, weakOnly: false };
+    this._filters = { weeks: [], flags: [], grade: 'all', unanswered: false, weakOnly: false, tags: [] };
     this._showModelAnswers  = true;
     this._hiddenModelAnswers = new Set();
     this.render();
@@ -115,7 +115,7 @@ const Review = {
     const session = Storage.getSessions()[id];
     if (session) {
       this.selectedSession = session;
-      this._filters = { weeks: [], flags: [], grade: 'all', unanswered: false, weakOnly: false };
+      this._filters = { weeks: [], flags: [], grade: 'all', unanswered: false, weakOnly: false, tags: [] };
       this._showModelAnswers  = true;
       this._hiddenModelAnswers = new Set();
     }
@@ -244,6 +244,9 @@ const Review = {
     const allWeeks = [...new Set(
       session.questionSnapshot.flatMap(q => q.weekTags)
     )].sort((a, b) => parseInt(a.replace(/\D/g, '')) - parseInt(b.replace(/\D/g, '')));
+    const allTags = [...new Set(
+      session.questionSnapshot.flatMap(q => getTags(q))
+    )].sort();
 
     const flagDefs = [
       ['usedNotes',    'Used Notes'],
@@ -261,7 +264,8 @@ const Review = {
     ];
 
     const hasFilters = f.weeks.length > 0 || f.flags.length > 0 ||
-                       f.grade !== 'all' || f.unanswered || f.weakOnly;
+                       f.grade !== 'all' || f.unanswered || f.weakOnly ||
+                       f.tags.length > 0;
     const shown = this._filteredQuestions().length;
     const total = session.questionSnapshot.length;
 
@@ -275,6 +279,19 @@ const Review = {
                 <button class="filter-chip ${f.weeks.includes(w) ? 'filter-chip-active' : ''}"
                         onclick="Review.toggleFilterWeek('${w}')">${w}</button>
               `).join('')}
+            </div>
+          </div>
+        ` : ''}
+
+        ${allTags.length > 0 ? `
+          <div class="filter-row">
+            <span class="filter-label">Tags</span>
+            <div class="filter-chips">
+              ${allTags.map(t =>
+                `<button class="filter-chip ${f.tags.includes(t) ? 'filter-chip-active' : ''}"
+                         data-tag="${this._esc(t)}"
+                         onclick="Review.toggleFilterTag(this.dataset.tag)">${this._esc(t)}</button>`
+              ).join('')}
             </div>
           </div>
         ` : ''}
@@ -341,8 +358,15 @@ const Review = {
     this._applyFilters();
   },
 
+  toggleFilterTag(tag) {
+    const idx = this._filters.tags.indexOf(tag);
+    if (idx >= 0) this._filters.tags.splice(idx, 1);
+    else          this._filters.tags.push(tag);
+    this._applyFilters();
+  },
+
   clearFilters() {
-    this._filters = { weeks: [], flags: [], grade: 'all', unanswered: false, weakOnly: false };
+    this._filters = { weeks: [], flags: [], grade: 'all', unanswered: false, weakOnly: false, tags: [] };
     this._applyFilters();
   },
 
@@ -372,6 +396,7 @@ const Review = {
           if (r.answer && (typeof r.answer !== 'string' || r.answer.trim())) return false;
         }
         if (f.weakOnly && !this._isWeak(r)) return false;
+        if (f.tags.length > 0 && !f.tags.some(t => getTags(q).includes(t))) return false;
         return true;
       });
   },
@@ -427,7 +452,7 @@ const Review = {
             <span class="q-index">Q${originalIdx + 1}</span>
             <span class="type-badge type-${q.type}">${typeLabel}</span>
             ${weekBadges}
-            ${q.subtopic ? `<span class="subtopic-badge">${this._esc(q.subtopic)}</span>` : ''}
+            ${getTags(q).map(t => `<span class="tag-badge">${this._esc(t)}</span>`).join('')}
             <span class="status-badge status-${status}">${statusLbl}</span>
             ${weak ? `<span class="weak-badge">Weak</span>` : ''}
           </div>

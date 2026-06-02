@@ -263,7 +263,7 @@ const Runner = {
           ${q.weekTags.map(w =>
             `<span class="week-tag week-tag-${w.replace(/\D/g, '')}">${w}</span>`
           ).join('')}
-          ${q.subtopic ? `<span class="subtopic-badge">${this._esc(q.subtopic)}</span>` : ''}
+          ${getTags(q).map(t => `<span class="tag-badge">${this._esc(t)}</span>`).join('')}
         </div>
 
         <div class="q-card-prompt md-rendered">${renderMarkdown(q.prompt)}</div>

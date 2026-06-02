@@ -7,6 +7,20 @@ function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
 }
 
+/**
+ * Return a question's tags as an array, migrating the old subtopic field if needed.
+ * Call this everywhere you need tag data — never read q.subtopic directly.
+ */
+function getTags(q) {
+  if (!q) return [];
+  if (Array.isArray(q.tags)) return q.tags;
+  // Migrate old single-string subtopic
+  if (q.subtopic && typeof q.subtopic === 'string' && q.subtopic.trim()) {
+    return [q.subtopic.trim()];
+  }
+  return [];
+}
+
 const Models = {
 
   // ── Question ───────────────────────────────────────────
@@ -18,7 +32,10 @@ const Models = {
       prompt:      data.prompt      || '',
       instructions: data.instructions || '',
       weekTags:    data.weekTags    || [],         // e.g. ['Week 1', 'Week 3']
-      subtopic:    data.subtopic    || '',
+      // tags replaces the old subtopic field;
+      // backward-compatible: if old subtopic exists, wrap it in an array
+      tags:        Array.isArray(data.tags) ? [...data.tags]
+                   : (data.subtopic && data.subtopic.trim() ? [data.subtopic.trim()] : []),
       modelAnswer: data.modelAnswer || '',
       mcqOptions:  data.mcqOptions  || [],         // only used when type === 'mcq'
       status:      data.status      || 'new',      // 'new' | 'learning' | 'solid' | 'mastered'

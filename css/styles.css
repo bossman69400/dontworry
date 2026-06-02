@@ -1754,3 +1754,85 @@ textarea.form-input { line-height: 1.5; }
   border-bottom: none;
   color: var(--text-muted);
 }
+
+/* ═══════════════════════════════════════════════════════
+   TAG SYSTEM — chip input + display badges
+   ═══════════════════════════════════════════════════════ */
+
+/* ─── Tag chip input (Builder modal) ─────────────────── */
+.tag-input-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  align-items: center;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  min-height: 38px;
+  cursor: text;
+  background: var(--surface);
+  transition: border-color .15s, box-shadow .15s;
+}
+.tag-input-wrap:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.12);
+}
+/* Editable chips inside the input */
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  background: #eef0fb;
+  color: var(--accent);
+  border-radius: 99px;
+  padding: 0.12rem 0.35rem 0.12rem 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.tag-chip-remove {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 0 0.1rem;
+  font-size: 1rem;
+  line-height: 1;
+  opacity: 0.6;
+  font-family: var(--font);
+  display: inline-flex;
+  align-items: center;
+}
+.tag-chip-remove:hover { opacity: 1; }
+/* The text input inside the chip container */
+.tag-text-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--font);
+  font-size: 0.875rem;
+  flex: 1;
+  min-width: 80px;
+  color: var(--text);
+  padding: 0.1rem 0;
+}
+.tag-text-input::placeholder { color: var(--text-muted); }
+
+/* ─── Tag display badges (Builder rows, Runner, Review) ─ */
+.tag-badge {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  background: #eef0fb;
+  color: var(--accent);
+  border-radius: 99px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* ─── Mobile ──────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .tag-input-wrap { min-height: 34px; }
+  .tag-text-input { font-size: 0.8rem; }
+}
