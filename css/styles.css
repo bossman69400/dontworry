@@ -1836,3 +1836,10 @@ textarea.form-input { line-height: 1.5; }
   .tag-input-wrap { min-height: 34px; }
   .tag-text-input { font-size: 0.8rem; }
 }
+
+/* ─── Shuffle badge + mode-selection divider ──────────── */
+.mode-badge.mode-shuffled   { background: #fdf2f8; color: #86198f; }
+.hbadge-shuffled             { background: #fdf2f8; color: #86198f; border: 1px solid #f0abfc; }
+.mode-divider                { border: none; border-top: 1px solid var(--border); margin: 0.75rem 0; }
+/* Shuffle option row: slightly less prominent than study-mode rows */
+.shuffle-option { border-style: dashed; }

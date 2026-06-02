@@ -200,8 +200,9 @@ const History = {
       <div class="history-card ${isComplete ? '' : 'history-card-inprogress'}">
         <div class="history-card-top">
           <div class="history-card-badges">
-            ${isRedo     ? `<span class="hbadge hbadge-redo">Redo</span>`        : ''}
-            ${!isComplete? `<span class="hbadge hbadge-progress">In Progress</span>` : ''}
+            ${isRedo          ? `<span class="hbadge hbadge-redo">Redo</span>`        : ''}
+            ${session.shuffled ? `<span class="hbadge hbadge-shuffled">Shuffled</span>` : ''}
+            ${!isComplete      ? `<span class="hbadge hbadge-progress">In Progress</span>` : ''}
           </div>
           <div class="history-card-title-row">
             <span class="history-card-title">${this._esc(session.testTitle)}</span>

@@ -81,7 +81,8 @@ const Review = {
       <div class="test-card">
         <div class="test-card-info">
           <div class="test-card-title-row">
-            ${isRedo ? '<span class="hbadge hbadge-redo">Redo</span>' : ''}
+            ${isRedo            ? '<span class="hbadge hbadge-redo">Redo</span>'      : ''}
+            ${session.shuffled  ? '<span class="hbadge hbadge-shuffled">Shuffled</span>' : ''}
             <h3>${this._esc(session.testTitle)}</h3>
           </div>
           <span class="meta">

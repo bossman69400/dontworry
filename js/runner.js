@@ -186,6 +186,17 @@ const Runner = {
           </label>
         </div>
 
+        <hr class="mode-divider">
+
+        <label class="mode-option shuffle-option">
+          <input type="checkbox" name="shuffle-questions"
+                 ${localStorage.getItem('exam_shuffle_pref') === '1' ? 'checked' : ''}>
+          <div class="mode-option-body">
+            <strong>Shuffle questions</strong>
+            <span>Randomise order for this session only</span>
+          </div>
+        </label>
+
         <button class="btn btn-primary btn-start-test"
                 onclick="Runner.startTest('${test.id}')">Start Test &rarr;</button>
       </div>
@@ -210,20 +221,36 @@ const Runner = {
       return;
     }
 
-    const modeEl = document.querySelector('input[name="study-mode"]:checked');
-    const mode   = modeEl ? modeEl.value : 'open-book';
+    const modeEl    = document.querySelector('input[name="study-mode"]:checked');
+    const mode       = modeEl ? modeEl.value : 'open-book';
+    const shuffleEl  = document.querySelector('input[name="shuffle-questions"]');
+    const doShuffle  = shuffleEl ? shuffleEl.checked : false;
+
+    // Persist shuffle preference for next time
+    try { localStorage.setItem('exam_shuffle_pref', doShuffle ? '1' : '0'); } catch (e) {}
+
+    // Apply Fisher-Yates shuffle to a copy — never mutates the source array
+    let orderedQs = testQs;
+    if (doShuffle) {
+      orderedQs = [...testQs];
+      for (let i = orderedQs.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [orderedQs[i], orderedQs[j]] = [orderedQs[j], orderedQs[i]];
+      }
+    }
 
     // Build an initial (empty) responses map
     const responses = {};
-    testQs.forEach(q => { responses[q.id] = Models.createResponse(); });
+    orderedQs.forEach(q => { responses[q.id] = Models.createResponse(); });
 
     this.session    = Models.createSession({
       testId:           test.id,
       testTitle:        test.title,
       mode,
-      questionSnapshot: testQs,
+      questionSnapshot: orderedQs,  // shuffled or original order — fixed for the session
       responses,
     });
+    this.session.shuffled = doShuffle;  // metadata, not part of core model
     this.currentIdx = 0;
     Storage.saveSession(this.session);
     this.render();
@@ -245,6 +272,7 @@ const Runner = {
         <div class="runner-header-top">
           <div class="runner-meta">
             <span class="mode-badge mode-${session.mode}">${this._modeLabel(session.mode)}</span>
+            ${session.shuffled ? '<span class="mode-badge mode-shuffled">Shuffled</span>' : ''}
             <span class="runner-test-name">${this._esc(session.testTitle)}</span>
           </div>
           <button class="btn btn-sm btn-ghost"
