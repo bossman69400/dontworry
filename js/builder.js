@@ -138,7 +138,9 @@ const Builder = {
     const weekBadges = q.weekTags
       .map(w => `<span class="week-tag week-tag-${w.replace(/\D/g, '')}">${w}</span>`)
       .join('');
-    const preview = q.prompt.length > 90 ? q.prompt.slice(0, 90) + '\u2026' : q.prompt;
+    // Strip markdown syntax for the compact one-line row preview
+    const plainPrompt = (typeof stripMarkdown === 'function') ? stripMarkdown(q.prompt) : q.prompt;
+    const preview = plainPrompt.length > 90 ? plainPrompt.slice(0, 90) + '\u2026' : plainPrompt;
 
     return `
       <div class="question-row">
@@ -240,23 +242,38 @@ const Builder = {
           </div>
 
           <div class="form-group">
-            <label for="q-prompt">Question Prompt *</label>
+            <label for="q-prompt">
+              Question Prompt *
+              <button type="button" class="md-preview-btn" data-field="q-prompt"
+                      onclick="Builder.toggleFieldPreview('q-prompt')">Preview</button>
+            </label>
             <textarea id="q-prompt" class="form-input" rows="3"
-                      placeholder="Enter your question here\u2026">${this._esc(q.prompt)}</textarea>
+                      placeholder="Enter your question here\u2026 (Markdown supported)">${this._esc(q.prompt)}</textarea>
+            <div id="q-prompt-preview" class="md-rendered md-preview-panel hidden"></div>
           </div>
 
           <div class="form-group">
-            <label for="q-instructions">Instructions <span class="hint">(optional)</span></label>
+            <label for="q-instructions">
+              Instructions <span class="hint">(optional)</span>
+              <button type="button" class="md-preview-btn" data-field="q-instructions"
+                      onclick="Builder.toggleFieldPreview('q-instructions')">Preview</button>
+            </label>
             <textarea id="q-instructions" class="form-input" rows="2"
-                      placeholder="e.g. Answer in 2\u20133 sentences">${this._esc(q.instructions)}</textarea>
+                      placeholder="e.g. Answer in 2\u20133 sentences (Markdown supported)">${this._esc(q.instructions)}</textarea>
+            <div id="q-instructions-preview" class="md-rendered md-preview-panel hidden"></div>
           </div>
 
           ${q.type === 'mcq' ? this._renderMcqSection(q) : ''}
 
           <div class="form-group">
-            <label for="q-model-answer">Model Answer / Marking Guide *</label>
+            <label for="q-model-answer">
+              Model Answer / Marking Guide *
+              <button type="button" class="md-preview-btn" data-field="q-model-answer"
+                      onclick="Builder.toggleFieldPreview('q-model-answer')">Preview</button>
+            </label>
             <textarea id="q-model-answer" class="form-input" rows="4"
-                      placeholder="Enter the ideal answer or key marking points\u2026">${this._esc(q.modelAnswer)}</textarea>
+                      placeholder="Enter the ideal answer or key marking points\u2026 (Markdown supported)">${this._esc(q.modelAnswer)}</textarea>
+            <div id="q-model-answer-preview" class="md-rendered md-preview-panel hidden"></div>
           </div>
 
         </div>
@@ -738,6 +755,33 @@ const Builder = {
   },
 
   // ── Utilities ────────────────────────────────────────────
+
+  // ── Markdown field preview toggle ──────────────────────────
+
+  toggleFieldPreview(fieldId) {
+    const textarea = document.getElementById(fieldId);
+    const preview  = document.getElementById(fieldId + '-preview');
+    const btn      = document.querySelector(`.md-preview-btn[data-field="${fieldId}"]`);
+    if (!textarea || !preview) return;
+
+    const isEditing = !textarea.classList.contains('hidden');
+    if (isEditing) {
+      // Show rendered preview
+      const text = textarea.value.trim();
+      preview.innerHTML = text
+        ? renderMarkdown(text)
+        : '<em class="no-answer">Nothing to preview yet.</em>';
+      typesetMath(preview);
+      textarea.classList.add('hidden');
+      preview.classList.remove('hidden');
+      if (btn) { btn.textContent = 'Edit'; btn.classList.add('active'); }
+    } else {
+      // Return to editing
+      textarea.classList.remove('hidden');
+      preview.classList.add('hidden');
+      if (btn) { btn.textContent = 'Preview'; btn.classList.remove('active'); }
+    }
+  },
 
   _toast(msg, type = 'success') {
     const el = document.createElement('div');

@@ -403,6 +403,8 @@ const Review = {
       const btn = s && s.querySelector('.model-toggle-btn');
       if (btn) btn.textContent = 'Show';
     });
+    // Typeset math in all newly rendered markdown content
+    typesetMath(el);
   },
 
   _cardHTML(q, r, originalIdx) {
@@ -429,10 +431,10 @@ const Review = {
 
         <div class="review-card-body">
 
-          <div class="review-card-prompt">${this._renderText(q.prompt)}</div>
+          <div class="review-card-prompt md-rendered">${renderMarkdown(q.prompt)}</div>
 
           ${q.instructions
-            ? `<div class="review-instructions">${this._renderText(q.instructions)}</div>`
+            ? `<div class="review-instructions md-rendered">${renderMarkdown(q.instructions)}</div>`
             : ''}
 
           ${this._testFlagsHTML(r)}
@@ -556,7 +558,7 @@ const Review = {
       }
     }
     if (q.modelAnswer && q.modelAnswer.trim()) {
-      parts.push(`<div class="model-answer-text">${this._renderText(q.modelAnswer)}</div>`);
+      parts.push(`<div class="model-answer-text md-rendered">${renderMarkdown(q.modelAnswer)}</div>`);
     } else {
       parts.push(`<span class="no-answer">No model answer provided</span>`);
     }

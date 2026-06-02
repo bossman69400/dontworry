@@ -26,6 +26,26 @@
     <div id="section-review"  class="section"></div>
   </main>
 
+  <!-- Markdown rendering (marked.js) and MathJax 3 for LaTeX math -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath:         [['\\(', '\\)']],
+        displayMath:        [['\\[', '\\]'], ['$$', '$$']],
+        processEscapes:     false,
+        processEnvironments: true,
+      },
+      options: {
+        skipHtmlTags: ['script','noscript','style','textarea','pre','code'],
+      },
+      startup: { typeset: false },   // we call typesetMath() manually
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
+  <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"
+          id="MathJax-script"></script>
+  <script src="js/md.js"></script>
+
   <script src="js/storage.js"></script>
   <script src="js/models.js"></script>
   <script src="js/router.js"></script>

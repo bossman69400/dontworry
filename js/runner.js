@@ -266,10 +266,10 @@ const Runner = {
           ${q.subtopic ? `<span class="subtopic-badge">${this._esc(q.subtopic)}</span>` : ''}
         </div>
 
-        <div class="q-card-prompt">${this._renderText(q.prompt)}</div>
+        <div class="q-card-prompt md-rendered">${renderMarkdown(q.prompt)}</div>
 
         ${q.instructions
-          ? `<div class="q-card-instructions">${this._renderText(q.instructions)}</div>`
+          ? `<div class="q-card-instructions md-rendered">${renderMarkdown(q.instructions)}</div>`
           : ''}
 
         <div class="q-card-answer">
@@ -302,6 +302,9 @@ const Runner = {
         }
       </div>
     `;
+
+    // Typeset math in the newly rendered question card
+    typesetMath(el);
 
     // Auto-focus text inputs for keyboard users
     setTimeout(() => {
