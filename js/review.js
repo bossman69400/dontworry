@@ -405,6 +405,11 @@ const Review = {
   _injectCards() {
     const el = document.getElementById('review-cards');
     if (!el) return;
+
+    // Clear MathJax's tracking before replacing content so the next
+    // typesetMath call sees all math nodes as unprocessed.
+    clearMath(el);
+
     const filtered = this._filteredQuestions();
     if (filtered.length === 0) {
       el.innerHTML = `<div class="empty-state">

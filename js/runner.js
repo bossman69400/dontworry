@@ -267,6 +267,11 @@ const Runner = {
     const isLast   = currentIdx === total - 1;
     const pct      = Math.round(((currentIdx + 1) / total) * 100);
 
+    // Tell MathJax to forget about the current content before we replace it.
+    // Without this, MathJax's internal state for the element is stale after
+    // innerHTML is swapped, which can prevent subsequent typesets from running.
+    clearMath(el);
+
     el.innerHTML = `
       <div class="runner-header">
         <div class="runner-header-top">

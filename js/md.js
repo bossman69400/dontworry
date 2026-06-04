@@ -7,6 +7,7 @@
  * Exports (globals):
  *   renderMarkdown(text)     — returns HTML string
  *   stripMarkdown(text)      — returns plain text (for row previews)
+ *   clearMath(el?)           — clear MathJax state before replacing innerHTML
  *   typesetMath(el?)         — trigger MathJax typesetting on an element
  */
 
@@ -90,10 +91,43 @@ function renderMarkdown(text) {
 }
 
 /**
+ * Clear MathJax's internal tracking of a DOM element before its innerHTML
+ * is replaced.  Must be called while the old content is still in the DOM so
+ * MathJax can clean up its internal records.  No-ops if MathJax is not loaded.
+ */
+function clearMath(el) {
+  if (typeof MathJax === 'undefined') return;
+  try {
+    if (typeof MathJax.typesetClear === 'function') {
+      MathJax.typesetClear(el ? [el] : undefined);
+    }
+  } catch (e) {}
+}
+
+// Serialised typeset queue — chains every typesetPromise call so that a
+// second render triggered before the first finishes (e.g. rapid navigation)
+// never hits MathJax's "already in progress" error.
+let _typesetQueue = Promise.resolve();
+
+/**
  * Typeset MathJax on a DOM element (or the full page if el is omitted).
- * No-ops gracefully if MathJax has not loaded yet.
+ * Waits for MathJax startup to complete so it is safe to call immediately
+ * after setting innerHTML, even before the async CDN script has finished
+ * loading.  Calls are serialised to prevent "already in progress" errors
+ * during rapid navigation.
  */
 function typesetMath(el) {
-  if (typeof MathJax === 'undefined' || typeof MathJax.typesetPromise !== 'function') return;
-  MathJax.typesetPromise(el ? [el] : undefined).catch(() => {});
+  if (typeof MathJax === 'undefined') return;
+  const run = () => {
+    if (typeof MathJax.typesetPromise !== 'function') return Promise.resolve();
+    return MathJax.typesetPromise(el ? [el] : undefined).catch(() => {});
+  };
+  if (MathJax.startup && MathJax.startup.promise) {
+    _typesetQueue = _typesetQueue
+      .then(() => MathJax.startup.promise)
+      .then(run)
+      .catch(() => {});
+  } else {
+    _typesetQueue = _typesetQueue.then(run).catch(() => {});
+  }
 }
