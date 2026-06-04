@@ -41,6 +41,7 @@ function stripMarkdown(text) {
     .replace(/\\\[[\s\S]*?\\\]/g, '[math]')
     .replace(/\$\$[\s\S]*?\$\$/g, '[math]')
     .replace(/\\\([\s\S]*?\\\)/g, '[math]')
+    .replace(/\$([^$\n]+?)\$/g, '[math]')   // $...$ inline (after $$ already gone)
     .replace(/\n+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -51,8 +52,13 @@ function stripMarkdown(text) {
  * MathJax can typeset them after the HTML is inserted into the DOM.
  *
  * Math delimiters:
- *   Inline:  \( ... \)
- *   Display: \[ ... \]   or   $$ ... $$
+ *   Inline:  \( ... \)   and   $ ... $
+ *   Display: \[ ... \]   or    $$ ... $$
+ *
+ * Single-dollar $...$ is converted to \(...\) during preprocessing so that
+ * MathJax (which is configured for \( \) only) can render it without enabling
+ * the problematic global dollar-sign mode.  Content that starts with a digit
+ * is skipped to avoid treating currency amounts like "$5" as math.
  *
  * Falls back to escaped plain text with line breaks when marked.js is not
  * loaded (e.g. offline — the CDN request failed).
@@ -76,10 +82,22 @@ function renderMarkdown(text) {
     };
 
     let src = text;
-    // Extract math before markdown processing — order: longest delimiters first
-    src = src.replace(/\\\[[\s\S]*?\\\]/g, mark);   // \[ ... \]
-    src = src.replace(/\$\$[\s\S]*?\$\$/g, mark);    // $$ ... $$
-    src = src.replace(/\\\([\s\S]*?\\\)/g, mark);    // \( ... \)
+    // Extract math before markdown processing.
+    // Order matters: longest / most specific delimiters first so that a later
+    // pattern never partially matches inside an already-extracted expression.
+    src = src.replace(/\\\[[\s\S]*?\\\]/g, mark);   // \[ ... \]  display
+    src = src.replace(/\$\$[\s\S]*?\$\$/g, mark);    // $$ ... $$ display
+    src = src.replace(/\\\([\s\S]*?\\\)/g, mark);    // \( ... \)  inline
+
+    // Single-dollar inline math: $...$
+    // After $$...$$ is already extracted, every remaining $ pair is a
+    // candidate for inline math.  Convert to \(...\) so MathJax (configured
+    // for \( \) only) can typeset it.  Skip if the content starts with a
+    // digit — those are almost always currency amounts ("$5", "$20.00").
+    src = src.replace(/\$([^$\n]+?)\$/g, (match, content) => {
+      if (/^\d/.test(content.trim())) return match;  // currency guard
+      return mark('\\(' + content + '\\)');
+    });
 
     const html = marked.parse(src);
     return restore(html);
