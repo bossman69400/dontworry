@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Exam Practice</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <nav class="nav">
+    <span class="nav-brand">Exam Practice</span>
+    <span id="save-status" class="save-status" aria-live="polite"></span>
+    <div class="nav-links">
+      <a class="nav-link" data-section="builder" href="#builder">Builder</a>
+      <a class="nav-link" data-section="runner"  href="#runner">Take Test</a>
+      <a class="nav-link" data-section="history" href="#history">History</a>
+      <a class="nav-link" data-section="review"  href="#review">Review</a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div id="section-builder" class="section"></div>
+    <div id="section-runner"  class="section"></div>
+    <div id="section-history" class="section"></div>
+    <div id="section-review"  class="section"></div>
+  </main>
+
+  <!-- Markdown rendering (marked.js) and MathJax 3 for LaTeX math -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath:         [['\\(', '\\)']],
+        displayMath:        [['\\[', '\\]'], ['$$', '$$']],
+        processEscapes:     false,
+        processEnvironments: true,
+      },
+      options: {
+        skipHtmlTags: ['script','noscript','style','textarea','pre','code'],
+      },
+      startup: { typeset: false },   // we call typesetMath() manually
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
+  <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"
+          id="MathJax-script"></script>
+  <script src="js/md.js"></script>
+
+  <script src="js/storage.js"></script>
+  <script src="js/models.js"></script>
+  <script src="js/router.js"></script>
+  <script src="js/builder.js"></script>
+  <script src="js/runner.js"></script>
+  <script src="js/review.js"></script>
+  <script src="js/history.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>
