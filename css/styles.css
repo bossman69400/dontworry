@@ -1843,3 +1843,66 @@ textarea.form-input { line-height: 1.5; }
 .mode-divider                { border: none; border-top: 1px solid var(--border); margin: 0.75rem 0; }
 /* Shuffle option row: slightly less prominent than study-mode rows */
 .shuffle-option { border-style: dashed; }
+
+/* ─── Week filter (mode-selection card) ───────────────── */
+.week-filter-section { margin-top: 0.25rem; }
+
+.week-filter-header {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.55rem;
+}
+.week-filter-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+  margin-right: 0.2rem;
+}
+
+.week-filter-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.6rem;
+  margin-bottom: 0.5rem;
+}
+.week-filter-item {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  cursor: pointer;
+  user-select: none;
+}
+.week-filter-item input[type=checkbox] {
+  width: 0.875rem;
+  height: 0.875rem;
+  accent-color: var(--accent);
+  margin: 0;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+/* Slightly reduce week-tag size inside the filter grid */
+.week-filter-item .week-tag { font-size: 0.72rem; padding: 0.1rem 0.45rem; }
+
+.week-filter-count {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.1rem;
+}
+.week-filter-count-empty { color: var(--danger); font-weight: 600; }
+
+/* ─── Filtered session badge ──────────────────────────── */
+.mode-badge.mode-filtered { background: #ede9fe; color: #5b21b6; }
+.hbadge-filtered { background: #ede9fe; color: #5b21b6; border: 1px solid #ddd6fe; }
+
+/* Resume-card badge row */
+.test-card-badges {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.3rem;
+}

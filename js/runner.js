@@ -13,9 +13,10 @@
  * Navigating always flushes the current text answer first.
  */
 const Runner = {
-  session:    null,   // active Session object (null = no active session)
-  currentIdx: 0,      // index into session.questionSnapshot
-  _saveTimer: null,   // debounce handle for text autosave
+  session:        null,   // active Session object (null = no active session)
+  currentIdx:     0,      // index into session.questionSnapshot
+  _saveTimer:     null,   // debounce handle for text autosave
+  _pendingPresets: null,  // preset groups built during mode-selection render
 
   // ── Init ─────────────────────────────────────────────────
 
@@ -77,6 +78,10 @@ const Runner = {
     return `
       <div class="test-card">
         <div class="test-card-info">
+          <div class="test-card-badges">
+            ${session.shuffled   ? '<span class="hbadge hbadge-shuffled">Shuffled</span>'  : ''}
+            ${session.isFiltered ? '<span class="hbadge hbadge-filtered">Filtered</span>'  : ''}
+          </div>
           <h3>${this._esc(session.testTitle)}</h3>
           <span class="meta">
             ${answered} / ${total} answered &middot;
@@ -149,8 +154,13 @@ const Runner = {
 
   _renderModeSelection(el, test) {
     const questions = Storage.getQuestions();
-    const qCount = test.questionIds.filter(id => questions[id]).length;
+    const testQs    = test.questionIds.map(id => questions[id]).filter(Boolean);
+    const qCount    = testQs.length;
     this._pendingTestId = test.id;
+
+    // Unique weeks used by this test's questions, in numeric order
+    const allWeeks = [...new Set(testQs.flatMap(q => q.weekTags))]
+      .sort((a, b) => parseInt(a.replace(/\D/g,'') || 0) - parseInt(b.replace(/\D/g,'') || 0));
 
     el.innerHTML = `
       <div class="page-header">
@@ -197,10 +207,101 @@ const Runner = {
           </div>
         </label>
 
+        ${allWeeks.length > 1 ? this._weekFilterHTML(allWeeks, testQs) : ''}
+
         <button class="btn btn-primary btn-start-test"
                 onclick="Runner.startTest('${test.id}')">Start Test &rarr;</button>
       </div>
     `;
+  },
+
+  /**
+   * Render the week-filter section for the mode-selection card.
+   * Only called when the test has 2+ distinct week tags.
+   */
+  _weekFilterHTML(allWeeks, testQs) {
+    // Quick presets: only include a preset group when the test uses at least
+    // one week in that range.  Show the preset row only when 2+ groups match.
+    const presetDefs = [
+      { label: 'Wks 1–4',  weeks: ['Week 1','Week 2','Week 3','Week 4']   },
+      { label: 'Wks 5–8',  weeks: ['Week 5','Week 6','Week 7','Week 8']   },
+      { label: 'Wks 9–12', weeks: ['Week 9','Week 10','Week 11','Week 12'] },
+    ];
+    const activePresets = presetDefs.filter(p => p.weeks.some(w => allWeeks.includes(w)));
+    this._pendingPresets = activePresets;
+    const showPresets = activePresets.length > 1;
+
+    const qCount = testQs.length;
+    return `
+      <hr class="mode-divider">
+      <div class="week-filter-section">
+        <div class="week-filter-header">
+          <span class="week-filter-label">Week filter</span>
+          <button type="button" class="btn btn-sm btn-ghost"
+                  onclick="Runner._weekSelectAll(true)">All</button>
+          <button type="button" class="btn btn-sm btn-ghost"
+                  onclick="Runner._weekSelectAll(false)">None</button>
+          ${showPresets ? activePresets.map(p => `
+            <button type="button" class="btn btn-sm btn-ghost week-preset-btn"
+                    data-preset="${this._esc(JSON.stringify(p.weeks))}"
+                    onclick="Runner._weekSelectPreset(this.dataset.preset)">${p.label}</button>
+          `).join('') : ''}
+        </div>
+        <div class="week-filter-grid">
+          ${allWeeks.map(w => `
+            <label class="week-filter-item">
+              <input type="checkbox" class="week-filter-check"
+                     value="${this._esc(w)}" checked
+                     onchange="Runner._updateWeekCount()">
+              <span class="week-tag week-tag-${w.replace(/\D/g,'')}">${this._esc(w)}</span>
+            </label>
+          `).join('')}
+        </div>
+        <p class="week-filter-count" id="week-filter-count">
+          ${qCount} question${qCount !== 1 ? 's' : ''} selected
+        </p>
+      </div>
+    `;
+  },
+
+  // ── Week-filter event handlers ────────────────────────
+
+  _getSelectedWeeks() {
+    return Array.from(document.querySelectorAll('.week-filter-check:checked'))
+      .map(cb => cb.value);
+  },
+
+  _weekSelectAll(checked) {
+    document.querySelectorAll('.week-filter-check').forEach(cb => { cb.checked = checked; });
+    this._updateWeekCount();
+  },
+
+  _weekSelectPreset(jsonWeeks) {
+    let weekList;
+    try { weekList = JSON.parse(jsonWeeks); } catch (e) { return; }
+    document.querySelectorAll('.week-filter-check').forEach(cb => {
+      cb.checked = weekList.includes(cb.value);
+    });
+    this._updateWeekCount();
+  },
+
+  _updateWeekCount() {
+    const test = this._pendingTestId ? Storage.getTests()[this._pendingTestId] : null;
+    if (!test) return;
+    const questions  = Storage.getQuestions();
+    const testQs     = test.questionIds.map(id => questions[id]).filter(Boolean);
+    const allChecks  = document.querySelectorAll('.week-filter-check');
+    const selected   = this._getSelectedWeeks();
+    const allTicked  = selected.length === allChecks.length;
+    const count      = allTicked
+      ? testQs.length
+      : testQs.filter(q => q.weekTags.some(w => selected.includes(w))).length;
+    const el = document.getElementById('week-filter-count');
+    if (!el) return;
+    el.textContent  = count === 0
+      ? 'No questions match — select at least one week'
+      : `${count} question${count !== 1 ? 's' : ''} selected`;
+    el.className    = 'week-filter-count' + (count === 0 ? ' week-filter-count-empty' : '');
   },
 
   _cancelMode() {
@@ -229,10 +330,35 @@ const Runner = {
     // Persist shuffle preference for next time
     try { localStorage.setItem('exam_shuffle_pref', doShuffle ? '1' : '0'); } catch (e) {}
 
-    // Apply Fisher-Yates shuffle to a copy — never mutates the source array
-    let orderedQs = testQs;
+    // Week filter — read selected weeks from the checkboxes (shown only when
+    // the test has 2+ distinct weeks).  If all boxes are checked, treat as
+    // unfiltered so session metadata stays clean.
+    const weekCheckboxes = document.querySelectorAll('.week-filter-check');
+    const selectedWeeks  = Array.from(weekCheckboxes)
+      .filter(cb => cb.checked).map(cb => cb.value);
+    const isFiltered     = weekCheckboxes.length > 0 &&
+                           selectedWeeks.length < weekCheckboxes.length;
+
+    // If the filter UI is visible and no week is ticked, block the start.
+    if (weekCheckboxes.length > 0 && selectedWeeks.length === 0) {
+      alert('Please select at least one week to include in the session.');
+      return;
+    }
+
+    // Apply week filter: keep questions whose weekTags overlap the selection.
+    // When isFiltered is false, use the full list unchanged.
+    let orderedQs = isFiltered
+      ? testQs.filter(q => q.weekTags.some(w => selectedWeeks.includes(w)))
+      : testQs;
+
+    if (orderedQs.length === 0) {
+      alert('No questions match the selected weeks. Please broaden your selection.');
+      return;
+    }
+
+    // Apply Fisher-Yates shuffle AFTER filtering — never mutates the source array
     if (doShuffle) {
-      orderedQs = [...testQs];
+      orderedQs = [...orderedQs];
       for (let i = orderedQs.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [orderedQs[i], orderedQs[j]] = [orderedQs[j], orderedQs[i]];
@@ -247,10 +373,13 @@ const Runner = {
       testId:           test.id,
       testTitle:        test.title,
       mode,
-      questionSnapshot: orderedQs,  // shuffled or original order — fixed for the session
+      questionSnapshot: orderedQs,  // filtered + shuffled order — fixed for the session
       responses,
     });
-    this.session.shuffled = doShuffle;  // metadata, not part of core model
+    // Extra metadata fields (not part of the core model schema)
+    this.session.shuffled      = doShuffle;
+    this.session.selectedWeeks = isFiltered ? selectedWeeks : [];
+    this.session.isFiltered    = isFiltered;
     this.currentIdx = 0;
     Storage.saveSession(this.session);
     this.render();
@@ -277,7 +406,8 @@ const Runner = {
         <div class="runner-header-top">
           <div class="runner-meta">
             <span class="mode-badge mode-${session.mode}">${this._modeLabel(session.mode)}</span>
-            ${session.shuffled ? '<span class="mode-badge mode-shuffled">Shuffled</span>' : ''}
+            ${session.shuffled   ? '<span class="mode-badge mode-shuffled">Shuffled</span>'  : ''}
+            ${session.isFiltered ? '<span class="mode-badge mode-filtered">Filtered</span>'  : ''}
             <span class="runner-test-name">${this._esc(session.testTitle)}</span>
           </div>
           <button class="btn btn-sm btn-ghost"
